@@ -15,8 +15,7 @@
 <body>
 	
 	<div style="background-color: grey; padding: 2px;">
-		<h4>EDITOR</h4><button id="pm1" group="arbs">+</button><button id="pm2" group="arbs">-</button><button>Submit</button><button>Close</button>
-		<input id="pm3" placeholder="Filepath Here">
+		<h4>EDITOR</h4><button id="pm1" group="arbs">+</button><button id="pm2" group="arbs">-</button><input id="pm3" placeholder="Filepath Here"><button>Submit</button><button>Close</button>
 	</div>
 	<br>
 	<div style="background-color: grey; padding: 2px; width: 350px;">
@@ -36,7 +35,7 @@
 	</div>
 </div>
 <script>
-	let ctrlAltComboCount = 0;
+let ctrlAltComboCount = 0;
 let lastComboTime = 0;
 let pendingFilesData = [];
 let systemFileCache = [];
@@ -45,7 +44,7 @@ let currentLevel = 1;
 const maxLevel = 10;
 const minLevel = 1;
 
-let toastTimeoutKey = null;
+let virtualFileSystem = {};
 
 window.openToolkit = function() {
     const overlayInstance = document.getElementById('editor');
@@ -65,6 +64,116 @@ window.closeToolkit = function() {
     if (fileUploadInputElement) fileUploadInputElement.value = '';
     
     pendingFilesData = [];
+};
+
+window.toggleToolkit = function() {
+    const overlayInstance = document.getElementById('editor');
+    if (overlayInstance) {
+        if (overlayInstance.classList.contains('active')) {
+            window.closeToolkit();
+        } else {
+            window.openToolkit();
+        }
+    }
+};
+
+window.createFileOrFolderEntity = function(pathString, fileContent) {
+    if (!pathString || pathString.trim() === "") return;
+    
+    const cleanPath = pathString.replace(/^\/+|\/+$/g, '');
+    const pathParts = cleanPath.split('/');
+    
+    let currentDir = virtualFileSystem;
+    
+    for (let i = 0; i < pathParts.length; i++) {
+        const currentPart = pathParts[i];
+        
+        if (i === pathParts.length - 1) {
+            if (currentPart.includes('.')) {
+                currentDir[currentPart] = {
+                    type: 'file',
+                    content: fileContent || '',
+                    size: (new Blob([fileContent || '']).size / 1024).toFixed(1) + ' KB',
+                    mime: 'text/plain'
+                };
+            } else {
+                if (!currentDir[currentPart] || typeof currentDir[currentPart] !== 'object' || currentDir[currentPart].type === 'file') {
+                    currentDir[currentPart] = {
+                        type: 'directory',
+                        children: {}
+                    };
+                }
+            }
+        } else {
+            if (!currentDir[currentPart] || typeof currentDir[currentPart] !== 'object' || currentDir[currentPart].type === 'file') {
+                currentDir[currentPart] = {
+                    type: 'directory',
+                    children: {}
+                };
+            }
+            currentDir = currentDir[currentPart].children;
+        }
+    }
+    
+    window.syncVirtualSystemToCache();
+};
+
+window.syncVirtualSystemToCache = function() {
+    systemFileCache = [];
+    
+    function traverseTree(dirObj, accumulatedPath) {
+        for (const key in dirObj) {
+            const currentPath = accumulatedPath ? `${accumulatedPath}/${key}` : key;
+            const node = dirObj[key];
+            
+            if (node.type === 'file') {
+                systemFileCache.push({
+                    name: currentPath,
+                    size: node.size,
+                    type: node.mime,
+                    content: node.content
+                });
+            } else if (node.type === 'directory') {
+                systemFileCache.push({
+                    name: `${currentPath}/`,
+                    size: '0 KB',
+                    type: 'directory',
+                    content: '[ Virtual Directory Container ]'
+                });
+                traverseTree(node.children, currentPath);
+            }
+        }
+    }
+    
+    traverseTree(virtualFileSystem, "");
+    window.renderWorkspaceDashboardCards();
+};
+
+window.removeFileOrFolderEntity = function(pathString) {
+    if (!pathString || pathString.trim() === "") return false;
+    
+    const cleanPath = pathString.replace(/^\/+|\/+$/g, '');
+    const pathParts = cleanPath.split('/');
+    
+    let currentDir = virtualFileSystem;
+    
+    for (let i = 0; i < pathParts.length - 1; i++) {
+        const currentPart = pathParts[i];
+        if (currentDir[currentPart] && currentDir[currentPart].type === 'directory') {
+            currentDir = currentDir[currentPart].children;
+        } else {
+            return false;
+        }
+    }
+    
+    const targetKey = pathParts[pathParts.length - 1];
+    if (currentDir[targetKey] !== undefined) {
+        delete currentDir[targetKey];
+        window.syncVirtualSystemToCache();
+        return true;
+    }
+    
+    return false;
 };
 
 window.saveToSlot = function(slotId, textValue) {
@@ -117,17 +226,15 @@ window.submitBufferToCache = function(explicitTextAreaContentOverride) {
     }
 
     if (targetedInputText && targetedInputText.trim() !== "") {
-        systemFileCache.push({
-            name: `Console Snippet (${new Date().toLocaleTimeString()})`,
-            size: (new Blob([targetedInputText]).size / 1024).toFixed(1) + ' KB',
-            type: 'text/javascript',
-            content: targetedInputText
-        });
+        const autoFileName = `snippet_${new Date().getTime()}.js`;
+        window.createFileOrFolderEntity(autoFileName, targetedInputText);
         stateVerificationPassed = true;
     }
 
     if (pendingFilesData.length > 0) {
-        systemFileCache = systemFileCache.concat(pendingFilesData);
+        pendingFilesData.forEach(file => {
+            window.createFileOrFolderEntity(file.name, file.content);
+        });
         stateVerificationPassed = true;
     }
 
@@ -135,8 +242,6 @@ window.submitBufferToCache = function(explicitTextAreaContentOverride) {
         return false;
     }
 
-    window.renderWorkspaceDashboardCards();
-    
     const textEntryBox = document.querySelector('#editor textarea');
     if (textEntryBox) textEntryBox.value = '';
     
@@ -192,16 +297,26 @@ document.addEventListener('DOMContentLoaded', () => {
         const pm1Btn = document.getElementById('pm1');
         if (pm1Btn) {
             pm1Btn.addEventListener('click', () => {
+                const pathInput = document.getElementById('pm3');
                 const textarea = editorOverlay.querySelector('textarea');
-                window.saveToSlot('pm1', textarea ? textarea.value : '');
+                if (pathInput && pathInput.value.trim() !== "") {
+                    window.createFileOrFolderEntity(pathInput.value, textarea ? textarea.value : '');
+                    pathInput.value = '';
+                }
             });
         }
 
         const pm2Btn = document.getElementById('pm2');
         if (pm2Btn) {
             pm2Btn.addEventListener('click', () => {
-                const textarea = editorOverlay.querySelector('textarea');
-                window.saveToSlot('pm2', textarea ? textarea.value : '');
+                const pathInput = document.getElementById('pm3');
+                if (pathInput && pathInput.value.trim() !== "") {
+                    const confirmation = confirm("Are you sure you want to delete this file? [YES] [NO]");
+                    if (confirmation) {
+                        window.removeFileOrFolderEntity(pathInput.value);
+                        pathInput.value = '';
+                    }
+                }
             });
         }
 
@@ -236,7 +351,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const fileUploader = document.getElementById('pm3');
-    if (fileUploader) {
+    if (fileUploader && fileUploader.type === 'file') {
         fileUploader.addEventListener('change', function(e) {
             const fileCollection = e.target.files;
             pendingFilesData = [];
@@ -270,10 +385,11 @@ window.addEventListener('keydown', function(event) {
             lastComboTime = processTimestamp;
 
             if (ctrlAltComboCount >= 3) {
-                window.openToolkit();
+                window.toggleToolkit();
                 ctrlAltComboCount = 0; 
             }
         }
     }
 });
+
 </script>
