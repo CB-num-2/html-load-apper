@@ -30,6 +30,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const pm3Input = document.getElementById('pm3');
     const fileexplorerDiv = document.getElementById('fileexplorer');
 
+    if (fileexplorerDiv) {
+        fileexplorerDiv.style.overflowY = 'auto';
+        fileexplorerDiv.style.overflowX = 'hidden';
+        fileexplorerDiv.style.maxHeight = '598px';
+        fileexplorerDiv.style.boxSizing = 'border-box';
+    }
+
     if (pm1Btn && pm3Input && fileexplorerDiv) {
         pm1Btn.addEventListener('click', () => {
             const pathValue = pm3Input.value.trim();
@@ -51,6 +58,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         folderWrapper.setAttribute('data-folder-name', part);
                         folderWrapper.style.paddingLeft = '10px';
                         folderWrapper.style.margin = '2px 0';
+                        folderWrapper.style.boxSizing = 'border-box';
 
                         const folderHeader = document.createElement('div');
                         folderHeader.textContent = `📁 ${part}`;
@@ -59,6 +67,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                         const folderContent = document.createElement('div');
                         folderContent.style.display = 'block';
+                        folderContent.style.boxSizing = 'border-box';
 
                         folderHeader.addEventListener('click', () => {
                             if (folderContent.style.display === 'none') {
@@ -84,6 +93,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     newFileButton.style.width = '100%';
                     newFileButton.style.textAlign = 'left';
                     newFileButton.style.margin = '2px 0';
+                    newFileButton.style.boxSizing = 'border-box';
                     newFileButton.setAttribute('data-filepath', pathValue);
 
                     currentContainer.appendChild(newFileButton);
