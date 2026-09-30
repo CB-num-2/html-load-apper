@@ -35,15 +35,61 @@ document.addEventListener('DOMContentLoaded', () => {
             const pathValue = pm3Input.value.trim();
             if (pathValue === '') return;
 
-            const newFileButton = document.createElement('button');
-            newFileButton.textContent = pathValue;
-            
-            newFileButton.style.display = 'block';
-            newFileButton.style.width = '100%';
-            newFileButton.style.textAlign = 'left';
-            newFileButton.style.margin = '2px 0';
+            const pathParts = pathValue.split('/').filter(part => part.length > 0);
+            if (pathParts.length === 0) return;
 
-            fileexplorerDiv.appendChild(newFileButton);
+            let currentContainer = fileexplorerDiv;
+
+            pathParts.forEach((part, index) => {
+                const isLast = index === pathParts.length - 1;
+
+                if (!isLast) {
+                    let existingFolder = currentContainer.querySelector(`[data-folder-name="${part}"]`);
+                    
+                    if (!existingFolder) {
+                        const folderWrapper = document.createElement('div');
+                        folderWrapper.setAttribute('data-folder-name', part);
+                        folderWrapper.style.paddingLeft = '10px';
+                        folderWrapper.style.margin = '2px 0';
+
+                        const folderHeader = document.createElement('div');
+                        folderHeader.textContent = `📁 ${part}`;
+                        folderHeader.style.fontWeight = 'bold';
+                        folderHeader.style.cursor = 'pointer';
+
+                        const folderContent = document.createElement('div');
+                        folderContent.style.display = 'block';
+
+                        folderHeader.addEventListener('click', () => {
+                            if (folderContent.style.display === 'none') {
+                                folderContent.style.display = 'block';
+                            } else {
+                                folderContent.style.display = 'none';
+                            }
+                        });
+
+                        folderWrapper.appendChild(folderHeader);
+                        folderWrapper.appendChild(folderContent);
+                        currentContainer.appendChild(folderWrapper);
+                        
+                        currentContainer = folderContent;
+                    } else {
+                        currentContainer = existingFolder.lastElementChild;
+                    }
+                } else {
+                    const newFileButton = document.createElement('button');
+                    newFileButton.textContent = pathValue.includes('/') ? `📄 ${part}` : part;
+                    
+                    newFileButton.style.display = 'block';
+                    newFileButton.style.width = '100%';
+                    newFileButton.style.textAlign = 'left';
+                    newFileButton.style.margin = '2px 0';
+                    newFileButton.setAttribute('data-filepath', pathValue);
+
+                    currentContainer.appendChild(newFileButton);
+                }
+            });
+
             pm3Input.value = '';
         });
     }
