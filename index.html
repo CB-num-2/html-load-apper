@@ -25,9 +25,6 @@
 	</div>
 </div>
 <script>
-let ctrlAltComboCount = 0;
-let lastComboTime = 0;
-
 document.addEventListener('DOMContentLoaded', () => {
     const pm1Btn = document.getElementById('pm1');
     const pm3Input = document.getElementById('pm3');
@@ -51,34 +48,4 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
-
-window.addEventListener('keydown', function(event) {
-    if (event.ctrlKey && event.altKey) {
-        const processTimestamp = Date.now();
-        
-        if (processTimestamp - lastComboTime > 1200) {
-            ctrlAltComboCount = 0;
-        }
-
-        if (event.key === 'Control' || event.key === 'Alt') {
-            ctrlAltComboCount++;
-            lastComboTime = processTimestamp;
-
-            if (ctrlAltComboCount >= 3) {
-                const overlayInstance = document.getElementById('editor');
-                if (overlayInstance) {
-                    if (overlayInstance.style.display === 'none' || !overlayInstance.classList.contains('active')) {
-                        overlayInstance.style.display = 'block';
-                        overlayInstance.classList.add('active');
-                    } else {
-                        overlayInstance.style.display = 'none';
-                        overlayInstance.classList.remove('active');
-                    }
-                }
-                ctrlAltComboCount = 0;
-            }
-        }
-    }
-});
-
 </script>
