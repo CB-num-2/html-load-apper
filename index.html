@@ -25,5 +25,60 @@
 	</div>
 </div>
 <script>
-	
+let ctrlAltComboCount = 0;
+let lastComboTime = 0;
+
+document.addEventListener('DOMContentLoaded', () => {
+    const pm1Btn = document.getElementById('pm1');
+    const pm3Input = document.getElementById('pm3');
+    const fileexplorerDiv = document.getElementById('fileexplorer');
+
+    if (pm1Btn && pm3Input && fileexplorerDiv) {
+        pm1Btn.addEventListener('click', () => {
+            const pathValue = pm3Input.value.trim();
+            if (pathValue === '') return;
+
+            const newFileButton = document.createElement('button');
+            newFileButton.textContent = pathValue;
+            
+            newFileButton.style.display = 'block';
+            newFileButton.style.width = '100%';
+            newFileButton.style.textAlign = 'left';
+            newFileButton.style.margin = '2px 0';
+
+            fileexplorerDiv.appendChild(newFileButton);
+            pm3Input.value = '';
+        });
+    }
+});
+
+window.addEventListener('keydown', function(event) {
+    if (event.ctrlKey && event.altKey) {
+        const processTimestamp = Date.now();
+        
+        if (processTimestamp - lastComboTime > 1200) {
+            ctrlAltComboCount = 0;
+        }
+
+        if (event.key === 'Control' || event.key === 'Alt') {
+            ctrlAltComboCount++;
+            lastComboTime = processTimestamp;
+
+            if (ctrlAltComboCount >= 3) {
+                const overlayInstance = document.getElementById('editor');
+                if (overlayInstance) {
+                    if (overlayInstance.style.display === 'none' || !overlayInstance.classList.contains('active')) {
+                        overlayInstance.style.display = 'block';
+                        overlayInstance.classList.add('active');
+                    } else {
+                        overlayInstance.style.display = 'none';
+                        overlayInstance.classList.remove('active');
+                    }
+                }
+                ctrlAltComboCount = 0;
+            }
+        }
+    }
+});
+
 </script>
