@@ -19,6 +19,7 @@
 	</div>
 	<br>
 	<div id="fileexplorer" style="position: absolute; top: 106px; left: 0px; padding: 2px; background-color: grey; width: 350px; height: 598px;">
+		<button id="back"><-</button><button id="forward">-></button>
 	</div>
 	<div style="position: absolute; top: 106px; left: 360px; padding: 2px; background-color: grey; overflow-y: scroll; overflow-x: scroll;">
 		<textarea style="width:833px; height: 598px; resize: none;"></textarea>
@@ -29,12 +30,88 @@ document.addEventListener('DOMContentLoaded', () => {
     const pm1Btn = document.getElementById('pm1');
     const pm3Input = document.getElementById('pm3');
     const fileexplorerDiv = document.getElementById('fileexplorer');
+    const backBtn = document.getElementById('back');
+    const forwardBtn = document.getElementById('forward');
+
+    const fsRoot = { type: 'folder', children: {} };
+    let currentPath = [];
+    let historyStack = [[]];
+    let historyIndex = 0;
 
     if (fileexplorerDiv) {
         fileexplorerDiv.style.overflowY = 'auto';
         fileexplorerDiv.style.overflowX = 'hidden';
         fileexplorerDiv.style.maxHeight = '598px';
         fileexplorerDiv.style.boxSizing = 'border-box';
+    }
+
+    function render() {
+        if (!fileexplorerDiv) return;
+        fileexplorerDiv.innerHTML = '';
+
+        let folder = fsRoot;
+        for (const part of currentPath) {
+            if (folder && folder.children[part] && folder.children[part].type === 'folder') {
+                folder = folder.children[part];
+            } else {
+                currentPath = [];
+                folder = fsRoot;
+                break;
+            }
+        }
+
+        for (const name in folder.children) {
+            const item = folder.children[name];
+            const btn = document.createElement('button');
+            btn.style.display = 'block';
+            btn.style.width = '100%';
+            btn.style.textAlign = 'left';
+            btn.style.margin = '2px 0';
+            btn.style.boxSizing = 'border-box';
+
+            if (item.type === 'folder') {
+                btn.textContent = `📁 ${name}`;
+                btn.addEventListener('click', () => {
+                    const newPath = [...currentPath, name];
+                    historyStack = historyStack.slice(0, historyIndex + 1);
+                    historyStack.push(newPath);
+                    historyIndex = historyStack.length - 1;
+                    currentPath = newPath;
+                    render();
+                });
+            } else {
+                btn.textContent = `📄 ${name}`;
+                btn.setAttribute('data-filepath', item.fullPath);
+            }
+            fileexplorerDiv.appendChild(btn);
+        }
+
+        if (backBtn) {
+            backBtn.disabled = historyIndex === 0;
+        }
+        if (forwardBtn) {
+            forwardBtn.disabled = historyIndex === historyStack.length - 1;
+        }
+    }
+
+    if (backBtn) {
+        backBtn.addEventListener('click', () => {
+            if (historyIndex > 0) {
+                historyIndex--;
+                currentPath = historyStack[historyIndex];
+                render();
+            }
+        });
+    }
+
+    if (forwardBtn) {
+        forwardBtn.addEventListener('click', () => {
+            if (historyIndex < historyStack.length - 1) {
+                historyIndex++;
+                currentPath = historyStack[historyIndex];
+                render();
+            }
+        });
     }
 
     if (pm1Btn && pm3Input && fileexplorerDiv) {
@@ -45,63 +122,34 @@ document.addEventListener('DOMContentLoaded', () => {
             const pathParts = pathValue.split('/').filter(part => part.length > 0);
             if (pathParts.length === 0) return;
 
-            let currentContainer = fileexplorerDiv;
+            let activeFolder = fsRoot;
 
             pathParts.forEach((part, index) => {
                 const isLast = index === pathParts.length - 1;
 
                 if (!isLast) {
-                    let existingFolder = currentContainer.querySelector(`[data-folder-name="${part}"]`);
-                    
-                    if (!existingFolder) {
-                        const folderWrapper = document.createElement('div');
-                        folderWrapper.setAttribute('data-folder-name', part);
-                        folderWrapper.style.paddingLeft = '10px';
-                        folderWrapper.style.margin = '2px 0';
-                        folderWrapper.style.boxSizing = 'border-box';
-
-                        const folderHeader = document.createElement('div');
-                        folderHeader.textContent = `📁 ${part}`;
-                        folderHeader.style.fontWeight = 'bold';
-                        folderHeader.style.cursor = 'pointer';
-
-                        const folderContent = document.createElement('div');
-                        folderContent.style.display = 'block';
-                        folderContent.style.boxSizing = 'border-box';
-
-                        folderHeader.addEventListener('click', () => {
-                            if (folderContent.style.display === 'none') {
-                                folderContent.style.display = 'block';
-                            } else {
-                                folderContent.style.display = 'none';
-                            }
-                        });
-
-                        folderWrapper.appendChild(folderHeader);
-                        folderWrapper.appendChild(folderContent);
-                        currentContainer.appendChild(folderWrapper);
-                        
-                        currentContainer = folderContent;
-                    } else {
-                        currentContainer = existingFolder.lastElementChild;
+                    if (!activeFolder.children[part]) {
+                        activeFolder.children[part] = {
+                            type: 'folder',
+                            children: {}
+                        };
                     }
+                    activeFolder = activeFolder.children[part];
                 } else {
-                    const newFileButton = document.createElement('button');
-                    newFileButton.textContent = pathValue.includes('/') ? `📄 ${part}` : part;
-                    
-                    newFileButton.style.display = 'block';
-                    newFileButton.style.width = '100%';
-                    newFileButton.style.textAlign = 'left';
-                    newFileButton.style.margin = '2px 0';
-                    newFileButton.style.boxSizing = 'border-box';
-                    newFileButton.setAttribute('data-filepath', pathValue);
-
-                    currentContainer.appendChild(newFileButton);
+                    if (!activeFolder.children[part]) {
+                        activeFolder.children[part] = {
+                            type: 'file',
+                            fullPath: pathValue
+                        };
+                    }
                 }
             });
 
             pm3Input.value = '';
+            render();
         });
     }
+
+    render();
 });
 </script>
