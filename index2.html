@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Full Screen Editor with Scoped Explorer</title>
+</head>
+<body style="margin: 0;">
+
+    <!-- Black div box with id 'editor' fitting the entire screen -->
+    <div id="editor" style="width: 100vw; height: 100vh; background-color: #000000;">
+        
+        <!-- Nested grey div box containing the toolbar items -->
+        <div style="background-color: #808080; height: 40px; width: 100vw;">
+            
+            <!-- Input text box styled with basic sizing and colors -->
+            <input id="path-input" type="text" placeholder="Enter path (e.g., src/ or docs/readme.txt)" style="width: 300px; height: 30px; background-color: #ffffff; color: #000000;">
+            
+            <!-- Plus button styled with basic sizing and colors -->
+            <button id="add-btn" style="width: 40px; height: 34px; background-color: #ffffff; color: #000000;">+</button>
+            
+            <!-- Minus button styled with basic sizing and colors -->
+            <button id="minus-btn" style="width: 40px; height: 34px; background-color: #ffffff; color: #000000;">-</button>
+            
+        </div>
+
+        <!-- File explorer div box with a unique id inside the editor container -->
+        <div id="file-explorer" style="width: 320px; height: 500px; background-color: #333333; padding: 10px;">
+            <!-- Content will be dynamically inserted here via JavaScript -->
+        </div>
+
+    </div>
+
+    <!-- JavaScript to handle navigation and directory states -->
+    <script>
+        const fileExplorer = document.getElementById('file-explorer');
+        const pathInput = document.getElementById('path-input');
+        const addBtn = document.getElementById('add-btn');
+
+        // Virtual File System initialization structure
+        const fileSystem = {
+            type: 'folder',
+            children: {}
+        };
+
+        // Navigation state stacks
+        let currentPath = []; // Array of strings tracking historical folder depths
+        let historyStack = [];
+        let forwardStack = [];
+
+        addBtn.addEventListener('click', function() {
+            const path = pathInput.value.trim();
+            if (!path) return;
+
+            // Validation Rule: Must end with a slash '/' or contain a file extension dot '.'
+            const isFolder = path.endsWith('/');
+            const cleanPath = isFolder ? path.slice(0, -1) : path;
+            const parts = cleanPath.split('/').filter(part => part !== '');
+            
+            if (parts.length === 0) return;
+
+            const lastPart = parts[parts.length - 1];
+            
+            // Reject paths that are not folders and do not contain an extension dot
+            if (!isFolder && !lastPart.includes('.')) {
+                return;
+            }
+
+            // Build out the nested file system layout
+            let current = fileSystem;
+            parts.forEach((part, index) => {
+                const isLast = index === parts.length - 1;
+                const itemType = (isLast && !isFolder) ? 'file' : 'folder';
+
+                if (!current.children[part]) {
+                    current.children[part] = {
+                        type: itemType,
+                        children: {}
+                    };
+                }
+                current = current.children[part];
+            });
+
+            pathInput.value = '';
+            renderExplorer();
+        });
+
+        function navigateToFolder(folderName) {
+            // Save state to back history, clear forward navigation paths
+            historyStack.push([...currentPath]);
+            forwardStack = [];
+            currentPath.push(folderName);
+            renderExplorer();
+        }
+
+        function goBack() {
+            if (historyStack.length > 0) {
+                forwardStack.push([...currentPath]);
+                currentPath = historyStack.pop();
+                renderExplorer();
+            }
+        }
+
+        function goForward() {
+            if (forwardStack.length > 0) {
+                historyStack.push([...currentPath]);
+                currentPath = forwardStack.pop();
+                renderExplorer();
+            }
+        }
+
+        function renderExplorer() {
+            fileExplorer.innerHTML = '';
+
+            // 1. Create Navigation Control Bar Container
+            const navBar = document.createElement('div');
+            navBar.style.height = '35px';
+            navBar.style.marginBottom = '10px';
+
+            // 2. Create Back button
+            const backBtn = document.createElement('button');
+            backBtn.textContent = '◀ Back';
+            backBtn.style.width = '70px';
+            backBtn.style.height = '30px';
+            backBtn.style.marginRight = '5px';
+            backBtn.style.backgroundColor = '#ffffff';
+            backBtn.style.color = '#000000';
+            backBtn.disabled = historyStack.length === 0;
+            backBtn.addEventListener('click', goBack);
+
+            // 3. Create Forward button
+            const forwardBtn = document.createElement('button');
+            forwardBtn.textContent = 'Forward ▶';
+            forwardBtn.style.width = '80px';
+            forwardBtn.style.height = '30px';
+            forwardBtn.style.backgroundColor = '#ffffff';
+            forwardBtn.style.color = '#000000';
+            forwardBtn.disabled = forwardStack.length === 0;
+            forwardBtn.addEventListener('click', goForward);
+
+            navBar.appendChild(backBtn);
+            navBar.appendChild(forwardBtn);
+            fileExplorer.appendChild(navBar);
+
+            // 4. Find the target node data for current folder depth
+            let currentFolder = fileSystem;
+            for (const dir of currentPath) {
+                if (currentFolder.children[dir] && currentFolder.children[dir].type === 'folder') {
+                    currentFolder = currentFolder.children[dir];
+                } else {
+                    break;
+                }
+            }
+
+            // 5. Render children nodes exclusively as buttons
+            for (const key in currentFolder.children) {
+                const item = currentFolder.children[key];
+                const itemBtn = document.createElement('button');
+                
+                itemBtn.style.display = 'block';
+                itemBtn.style.width = '100%';
+                itemBtn.style.height = '32px';
+                itemBtn.style.marginBottom = '4px';
+                itemBtn.style.textAlign = 'left';
+                itemBtn.style.paddingLeft = '10px';
+                itemBtn.style.backgroundColor = '#444444';
+                
+                if (item.type === 'folder') {
+                    itemBtn.style.color = '#ffcc00';
+                    itemBtn.textContent = '📁 ' + key + '/';
+                    itemBtn.addEventListener('click', function() {
+                        navigateToFolder(key);
+                    });
+                } else {
+                    itemBtn.style.color = '#ffffff';
+                    itemBtn.textContent = '📄 ' + key;
+                    // Files do nothing when clicked
+                }
+
+                fileExplorer.appendChild(itemBtn);
+            }
+        }
+
+        // Initial render execution loop
+        renderExplorer();
+    </script>
+
+</body>
+</html>
