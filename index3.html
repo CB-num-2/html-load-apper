@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Application Canvas</title>
+    <!-- JSZip module dependency for extraction and in-memory file compilation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #090d16; /* Clean, deep minimalist slate background */
+            color: #f1f5f9;
+            overflow: hidden;
+        }
+
+        /* Seamless backdrop when no application workspace is executing */
+        #empty-slate {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #090d16;
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        /* Fullscreen app runner sandbox wrapper */
+        #app-runner-frame {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            border: none;
+            display: none;
+            z-index: 1;
+            background: #ffffff;
+        }
+
+        /* Exact layout implementation matching requested structural constraint */
+        #editor {
+            position: fixed;
+            top: 30px;
+            right: 30px;
+            width: 320px;
+            background: rgba(13, 18, 30, 0.95);
+            border: 1px solid #1e293b;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 15px rgba(56, 189, 248, 0.15);
+            border-radius: 12px;
+            padding: 16px;
+            z-index: 10000;
+            display: none; /* Toggled sequentially via the [Ctrl]+[Alt] 3x shortcut */
+            backdrop-filter: blur(16px);
+            cursor: move; /* Indicates to users that the menu can be dragged freely */
+            user-select: none;
+        }
+
+        #saves {
+            max-height: 200px;
+            overflow-y: auto;
+            margin-bottom: 12px;
+            border: 1px solid #334155;
+            border-radius: 6px;
+            background: #05070c;
+            padding: 4px;
+            cursor: default; /* Keeps selection list intuitive */
+        }
+
+        /* Generated project rows inserted programmatically inside #saves */
+        .project-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            margin-bottom: 4px;
+            background: #0d131f;
+            border: 1px solid #1e293b;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            font-size: 0.85rem;
+        }
+
+        .project-row:hover {
+            background: #1e293b;
+            border-color: #38bdf8;
+        }
+
+        .project-row.selected {
+            background: #0369a1;
+            border-color: #0284c7;
+            color: #ffffff;
+        }
+
+        .project-tag {
+            font-size: 0.7rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            background: #1e293b;
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: #94a3b8;
+        }
+
+        /* Stylization rules matching targets within specified immutable markup menu */
+        #editor button {
+            color: #ffffff;
+            border: none;
+            padding: 8px 12px;
+            margin-right: 4px;
+            margin-top: 4px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 600;
+            transition: opacity 0.15s ease, transform 0.1s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #editor button:active {
+            transform: scale(0.95);
+        }
+
+        #add { background: #0284c7; min-width: 40px; }
+        #remove { background: #ef4444; min-width: 40px; }
+        #replace { background: #d97706; min-width: 40px; }
+        #open { background: #10b981; min-width: 40px; }
+
+        #editor button:hover {
+            opacity: 0.9;
+        }
+
+        /* Floating interaction alerts rendering safely outside restricted menu spaces */
+        .toast-system {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: #0f172a;
+            color: #f8fafc;
+            padding: 10px 20px;
+            border-radius: 6px;
+            border: 1px solid #334155;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
+            font-size: 0.85rem;
+            z-index: 10001;
+            transition: transform 0.25s cubic-bezier(0.1, 0.8, 0.3, 1);
+            pointer-events: none;
+        }
+        .toast-system.visible {
+            transform: translateX(-50%) translateY(0);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Minimal dark backdrop -->
+    <div id="empty-slate"></div>
+
+    <!-- Isolated viewport frame instance -->
+    <iframe id="app-runner-frame" sandbox="allow-scripts allow-modals allow-same-origin"></iframe>
+
+    <!-- UNMODIFIED REQUESTED HTML MATRIX SPECIFICATION -->
+    <div id="editor"><div id="saves"></div><button id="remove">-</button><button id="add">+</button><button id="replace">[R]</button><button id="open">[O]</button></div>
+
+    <!-- Status Alerts Platform -->
+    <div id="toast" class="toast-system"></div>
+
+    <script>
+        let storageDb;
+        let selectedId = null;
+        let combinationCount = 0;
+        let lastTapTime = 0;
+        const keysTracked = {};
+
+        // Draggable configuration tracking vars
+        let isDraggingMenu = false;
+        let menuDragStartX, menuDragStartY;
+
+        // Custom non-intrusive modal layout notifier
+        function runNotification(msg) {
+            const toast = document.getElementById("toast");
+            toast.textContent = msg;
+            toast.classList.add("visible");
+            clearTimeout(window.toastReset);
+            window.toastReset = setTimeout(() => {
+                toast.classList.remove("visible");
+            }, 3000);
+        }
+
+        // IndexedDB configuration block
+        function startStorageEngine() {
+            const request = indexedDB.open("ImmutableMenuAppHub", 1);
+            
+            request.onupgradeneeded = function(event) {
+                storageDb = event.target.result;
+                if (!storageDb.objectStoreNames.contains("sandboxes")) {
+                    storageDb.createObjectStore("sandboxes", { keyPath: "id" });
+                }
+            };
+
+            request.onsuccess = function(event) {
+                storageDb = event.target.result;
+                refreshSavesDeck();
+            };
+
+            request.onerror = function() {
+                runNotification("Storage initialization failure.");
+            };
+        }
+
+        // Setup Draggable Architecture onto #editor container without altering structural children
+        function attachMenuDragFeatures() {
+            const panel = document.getElementById("editor");
+
+            panel.addEventListener("mousedown", function(e) {
+                // Safeguard interactions inside inner inputs, lists or control keys
+                if (e.target.closest("button") || e.target.closest("#saves")) {
+                    return;
+                }
+                
+                isDraggingMenu = true;
+                menuDragStartX = e.clientX - panel.offsetLeft;
+                menuDragStartY = e.clientY - panel.offsetTop;
+                e.preventDefault();
+            });
+
+            document.addEventListener("mousemove", function(e) {
+                if (!isDraggingMenu) return;
+                
+                let targetX = e.clientX - menuDragStartX;
+                let targetY = e.clientY - menuDragStartY;
+
+                // Restrict movement vectors within viewport bounds
+                targetX = Math.max(0, Math.min(window.innerWidth - panel.offsetWidth, targetX));
+                targetY = Math.max(0, Math.min(window.innerHeight - panel.offsetHeight, targetY));
+
+                panel.style.left = targetX + "px";
+                panel.style.top = targetY + "px";
+                panel.style.right = "auto"; // Decouple baseline right constraint rule
+            });
+
+            document.addEventListener("mouseup", function() {
+                isDraggingMenu = false;
+            });
+        }
+
+        // Hotkey Recognition Sequencer: [Ctrl] + [Alt] x3
+        window.addEventListener("keydown", function(e) {
+            keysTracked[e.code] = true;
+
+            if ((keysTracked["ControlLeft"] || keysTracked["ControlRight"]) && 
+                (keysTracked["AltLeft"] || keysTracked["AltRight"])) {
+                
+                const now = Date.now();
+                if (now - lastTapTime > 220) {
+                    combinationCount++;
+                    lastTapTime = now;
+
+                    if (combinationCount === 3) {
+                        toggleConfigurationMenu();
+                        combinationCount = 0;
+                    }
+
+                    clearTimeout(window.keyCountReset);
+                    window.keyCountReset = setTimeout(() => {
+                        combinationCount = 0;
+                    }, 1200);
+                }
+            }
+        });
+
+        window.addEventListener("keyup", function(e) {
+            keysTracked[e.code] = false;
+        });
+
+        function toggleConfigurationMenu() {
+            const panel = document.getElementById("editor");
+            if (panel.style.display === "block") {
+                panel.style.display = "none";
+            } else {
+                panel.style.display = "block";
+                refreshSavesDeck();
+            }
+        }
+
+        function refreshSavesDeck() {
+            if (!storageDb) return;
+            const tx = storageDb.transaction(["sandboxes"], "readonly");
+            const store = tx.objectStore("sandboxes");
+            const fetchAll = store.getAll();
+
+            fetchAll.onsuccess = function() {
+                const listWrapper = document.getElementById("saves");
+                listWrapper.innerHTML = "";
+                const records = fetchAll.result;
+
+                if (records.length === 0) {
+                    listWrapper.innerHTML = `<div style="color: #475569; text-align:center; padding:12px; font-size:0.8rem;">No packages added.</div>`;
+                    return;
+                }
+
+                records.forEach(item => {
+                    const line = document.createElement("div");
+                    line.className = "project-row" + (selectedId === item.id ? " selected" : "");
+                    
+                    const titleStr = document.createElement("span");
+                    titleStr.textContent = item.id;
+                    
+                    const extBadge = document.createElement("span");
+                    extBadge.className = "project-tag";
+                    extBadge.textContent = item.ext;
+
+                    line.appendChild(titleStr);
+                    line.appendChild(extBadge);
+
+                    line.addEventListener("click", () => {
+                        selectedId = item.id;
+                        refreshSavesDeck();
+                    });
+
+                    listWrapper.appendChild(line);
+                });
+            };
+        }
+
+        function launchFileSelector(onSelectHandler) {
+            const hook = document.createElement("input");
+            hook.type = "file";
+            hook.accept = ".html,.htm,.zip";
+            hook.onchange = function(evt) {
+                const selectedFile = evt.target.files[0];
+                if (selectedFile) onSelectHandler(selectedFile);
+            };
+            hook.click();
+        }
+
+        // Implementation of Add Action (+)
+        document.getElementById("add").onclick = function() {
+            launchFileSelector((file) => {
+                const typeExt = file.name.split(".").pop().toLowerCase();
+                let initialName = file.name.substring(0, file.name.lastIndexOf(".")) || file.name;
+                let registrationId = prompt("Enter package label context:", initialName);
+
+                if (!registrationId || !registrationId.trim()) {
+                    runNotification("Operation aborted: Missing package context identifier.");
+                    return;
+                }
+                registrationId = registrationId.trim();
+
+                const reader = new FileReader();
+                reader.onload = function(evt) {
+                    const tx = storageDb.transaction(["sandboxes"], "readwrite");
+                    const store = tx.objectStore("sandboxes");
+                    
+                    store.put({
+                        id: registrationId,
+                        ext: typeExt,
+                        payload: evt.target.result,
+                        uploaded: Date.now()
+                    });
+
+                    tx.oncomplete = function() {
+                        selectedId = registrationId;
+                        refreshSavesDeck();
+                        runNotification(`Registered workspace context: "${registrationId}"`);
+                    };
+                };
+
+                if (typeExt === "zip") {
+                    reader.readAsArrayBuffer(file);
+                } else {
+                    reader.readAsText(file);
+                }
+            });
+        };
+
+        // Implementation of Replace Action ([R])
+        document.getElementById("replace").onclick = function() {
+            if (!selectedId) {
+                runNotification("Selection missing: Specify workspace item to replace.");
+                return;
+            }
+
+            launchFileSelector((file) => {
+                const typeExt = file.name.split(".").pop().toLowerCase();
+                const reader = new FileReader();
+
+                reader.onload = function(evt) {
+                    const tx = storageDb.transaction(["sandboxes"], "readwrite");
+                    const store = tx.objectStore("sandboxes");
+                    
+                    store.put({
+                        id: selectedId,
+                        ext: typeExt,
+                        payload: evt.target.result,
+                        uploaded: Date.now()
+                    });
+
+                    tx.oncomplete = function() {
+                        refreshSavesDeck();
+                        runNotification(`Updated data stream for: "${selectedId}"`);
+                    };
+                };
+
+                if (typeExt === "zip") {
+                    reader.readAsArrayBuffer(file);
+                } else {
+                    reader.readAsText(file);
+                }
+            });
+        };
+
+        // Implementation of Remove Action (-)
+        document.getElementById("remove").onclick = function() {
+            if (!selectedId) {
+                runNotification("Selection missing: Identify workspace context to remove.");
+                return;
+            }
+
+            const tx = storageDb.transaction(["sandboxes"], "readwrite");
+            const store = tx.objectStore("sandboxes");
+            store.delete(selectedId);
+
+            tx.oncomplete = function() {
+                runNotification(`Purged registry item: "${selectedId}"`);
+                selectedId = null;
+                refreshSavesDeck();
+            };
+        };
+
+        // Universal runner engine supporting high-compatibility standard injection and virtualization pipeline
+        document.getElementById("open").onclick = function() {
+            if (!selectedId) {
+                runNotification("Selection missing: Choose platform entry to deploy.");
+                return;
+            }
+
+            const tx = storageDb.transaction(["sandboxes"], "readonly");
+            const store = tx.objectStore("sandboxes");
+            const fetchOperation = store.get(selectedId);
+
+            fetchOperation.onsuccess = function() {
+                const data = fetchOperation.result;
+                if (!data) return;
+
+                const sandboxFrame = document.getElementById("app-runner-frame");
+                document.getElementById("empty-slate").style.display = "none";
+                sandboxFrame.style.display = "block";
+
+                // Standard Single HTML handling using clean, direct string injection (srcdoc bypasses origin errors)
+                if (data.ext === "html" || data.ext === "htm") {
+                    sandboxFrame.removeAttribute("src");
+                    sandboxFrame.srcdoc = data.payload;
+                    runNotification(`Compiled standalone view: ${data.id}`);
+                } 
+                // Virtualization asset pipeline for multi-file ZIP configurations
+                else if (data.ext === "zip") {
+                    if (typeof JSZip === "undefined") {
+                        runNotification("Unzipping compiler libraries initializing.");
+                        return;
+                    }
+
+                    JSZip.loadAsync(data.payload).then(async (zip) => {
+                        // Locate core entry point vector inside hierarchy
+                        let baseHtmlEntry = zip.file("index.html") || 
+                                            Object.keys(zip.files).find(p => p.endsWith(".html") || p.endsWith(".htm"));
+                        
+                        if (!baseHtmlEntry) {
+                            runNotification("Package error: Root index.html vector absent from ZIP hierarchy.");
+                            return;
+                        }
+
+                        const virtualDisk = {};
+                        const pendingTranslations = [];
+
+                        // Step 1: Unpack and categorize every file within the virtual workspace
+                        zip.forEach((path, entry) => {
+                            if (!entry.dir) {
+                                let typeMime = "application/octet-stream";
+                                const lowPath = path.toLowerCase();
+                                
+                                if (lowPath.endsWith(".html") || lowPath.endsWith(".htm")) typeMime = "text/html";
+                                else if (lowPath.endsWith(".css")) typeMime = "text/css";
+                                else if (lowPath.endsWith(".js")) typeMime = "application/javascript";
+                                else if (lowPath.endsWith(".svg")) typeMime = "image/svg+xml";
+                                else if (lowPath.endsWith(".png")) typeMime = "image/png";
+                                else if (lowPath.endsWith(".jpg") || lowPath.endsWith(".jpeg")) typeMime = "image/jpeg";
+                                else if (lowPath.endsWith(".json")) typeMime = "application/json";
+
+                                const compilePromise = entry.async("blob").then((blob) => {
+                                    const functionalUrl = URL.createObjectURL(blob.slice(0, blob.size, typeMime));
+                                    virtualDisk[path] = functionalUrl;
+                                    
+                                    if (typeMime === "text/css" || typeMime === "text/html" || typeMime === "application/javascript") {
+                                        return entry.async("string").then(text => {
+                                            virtualDisk["_raw_" + path] = text;
+                                        });
+                                    }
+                                });
+                                pendingTranslations.push(compilePromise);
+                            }
+                        });
+
+                        await Promise.all(pendingTranslations);
+
+                        // Step 2: Cross-link asset references inside sub-files (CSS url wrappers)
+                        for (let filePath in virtualDisk) {
+                            if (filePath.startsWith("_raw_") && filePath.endsWith(".css")) {
+                                let cssPayload = virtualDisk[filePath];
+                                for (let relativeKey in virtualDisk) {
+                                    if (!relativeKey.startsWith("_raw_")) {
+                                        const cleanRegexStr = relativeKey.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&");
+                                        const cssUrlRegex = new RegExp(`url\\s*\\(\\s*['"]?${cleanRegexStr}['"]?\\s*\\)`, "g");
+                                        cssPayload = cssPayload.replace(cssUrlRegex, `url("${virtualDisk[relativeKey]}")`);
+                                    }
+                                }
+                                const actualPath = filePath.replace("_raw_", "");
+                                const finalCssBlob = new Blob([cssPayload], { type: "text/css" });
+                                virtualDisk[actualPath] = URL.createObjectURL(finalCssBlob);
+                            }
+                        }
+
+                        // Step 3: Parse and bind asset dependencies into target HTML landing document markup
+                        let sourceHtmlString = virtualDisk["_raw_" + baseHtmlEntry.name];
+                        const parsingEngine = new DOMParser();
+                        const parsedDocument = parsingEngine.parseFromString(sourceHtmlString, "text/html");
+
+                        // Remap structural relative attributes across elements
+                        const attributesMap = [
+                            { selector: "link[rel='stylesheet']", attr: "href" },
+                            { selector: "script[src]", attr: "src" },
+                            { selector: "img[src]", attr: "src" },
+                            { selector: "video[src]", attr: "src" },
+                            { selector: "audio[src]", attr: "src" },
+                            { selector: "source[src]", attr: "src" }
+                        ];
+
+                        attributesMap.forEach(({ selector, attr }) => {
+                            parsedDocument.querySelectorAll(selector).forEach(element => {
+                                const currentVal = element.getAttribute(attr);
+                                if (currentVal) {
+                                    const sanitizedPath = currentVal.replace(/^\.\//, "").replace(/^\//, "");
+                                    if (virtualDisk[sanitizedPath]) {
+                                        element.setAttribute(attr, virtualDisk[sanitizedPath]);
+                                    } else {
+                                        const fallbackMatch = Object.keys(virtualDisk).find(k => k.endsWith(sanitizedPath));
+                                        if (fallbackMatch) element.setAttribute(attr, virtualDisk[fallbackMatch]);
+                                    }
+                                }
+                            });
+                        });
+
+                        const finalizedMarkupStream = new XMLSerializer().serializeToString(parsedDocument);
+                        sandboxFrame.removeAttribute("src");
+                        sandboxFrame.srcdoc = finalizedMarkupStream;
+                        runNotification(`Successfully virtualized complex workspace: ${data.id}`);
+                    }).catch((err) => {
+                        console.error(err);
+                        runNotification("Compilation error inside archive package parsing.");
+                    });
+                }
+            };
+        };
+
+        // Bootstrap Core Configurations on Workspace Boot
+        window.onload = function() {
+            startStorageEngine();
+            attachMenuDragFeatures();
+        };
+    </script>
+</body>
+</html>
