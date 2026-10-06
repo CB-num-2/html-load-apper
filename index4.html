@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic File App Runner</title>
+    <!-- Allowed CDN for ZIP file processing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #0b0f17;
+            color: #e2e8f0;
+        }
+
+        /* Fullscreen app runner environment */
+        #runner {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+            z-index: 1;
+            background: transparent;
+        }
+
+        /* --- FIXED OVERTOP MASTER SIDEBAR CONTROLS --- */
+        .sidebar-controls {
+            position: fixed;
+            top: 12px;
+            left: 12px;
+            display: flex;
+            gap: 6px;
+            z-index: 1500;
+        }
+
+        .ctrl-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            background: linear-gradient(135deg, #1d4ed8, #2563eb);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 0.9rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 10px rgba(37, 99, 235, 0.3);
+            transition: background 0.2s ease;
+        }
+
+        .ctrl-btn:hover {
+            background: linear-gradient(135deg, #2563eb, #3b82f6);
+        }
+
+        /* --- DUAL SIDEBAR LAYOUTS --- */
+
+        /* Sidebar 1: The Main Navigation Bar containing pill buttons */
+        #sidebar1 {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 104px;
+            height: 100%;
+            background: rgba(11, 15, 25, 0.92);
+            border-right: 1px solid rgba(255, 255, 255, 0.06);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            z-index: 900;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 60px; 
+            transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 4px 0 24px rgba(0, 0, 0, 0.4);
+        }
+
+        /* Sidebar 2: The Extra Workspace Editor Panel */
+        #sidebar2 {
+            position: fixed;
+            top: 0;
+            height: 100%;
+            background: rgba(15, 23, 42, 0.88);
+            border-right: 1px solid rgba(255, 255, 255, 0.06);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            z-index: 890;
+            padding-top: 60px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 4px 0 20px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        /* Position anchors depending on Sidebar 1 status */
+        body:not(.sb1-closed) #sidebar2 { left: 104px; }
+        body.sb1-closed #sidebar2 { left: 0px; }
+
+        /* Width sizing depending on internal collapse status */
+        body:not(.sb2-closed) #sidebar2 { width: 160px; }
+        body.sb2-closed #sidebar2 { width: 56px; }
+
+        /* Enforce layout view toggle mapping architectures */
+        body:not(.editor-active) #sidebar2 {
+            display: none !important;
+        }
+
+        .sidebar2-placeholder {
+            font-size: 0.75rem;
+            color: #475569;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-top: 20px;
+            transition: opacity 0.2s;
+        }
+
+        body.sb2-closed .sidebar2-placeholder {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* Toggle arrow built to sit at the top left of the Editor Bar */
+        #inlinePlusMinus {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            background: linear-gradient(135deg, #1d4ed8, #2563eb);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 0.9rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 10px rgba(37, 99, 235, 0.3);
+            transition: background 0.2s ease;
+            z-index: 950;
+        }
+
+        #inlinePlusMinus:hover {
+            background: linear-gradient(135deg, #2563eb, #3b82f6);
+        }
+
+        /* Pill-Shaped Buttons Layout inside Sidebar 1 */
+        .sidebar1-content {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            align-items: center;
+            width: 100%;
+        }
+
+        .sidebar-btn {
+            width: 86px;
+            height: 38px;
+            background: rgba(30, 41, 59, 0.45);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 19px; 
+            color: #94a3b8;
+            font-weight: 700;
+            font-size: 0.68rem;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            overflow: hidden;
+            white-space: nowrap;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .sidebar-btn:hover {
+            background: rgba(59, 130, 246, 0.08);
+            border-color: rgba(59, 130, 246, 0.4);
+            color: #60a5fa;
+            transform: translateY(-1px);
+            box-shadow: 0 0 12px rgba(59, 130, 246, 0.2);
+        }
+
+        /* --- ACTIVE VIBRANT BLUE STATUS HIGHLIGHT --- */
+        .sidebar-btn.active-btn {
+            background: #2563eb !important;
+            color: #ffffff !important;
+            border-color: #60a5fa !important;
+            box-shadow: 0 0 14px rgba(37, 99, 235, 0.5);
+        }
+
+        /* Global Hide State when Running applications */
+        body.runtime-active #sidebar1, 
+        body.runtime-active #sidebar2, 
+        body.runtime-active .sidebar-controls {
+            display: none !important;
+        }
+
+        body.sb1-closed #sidebar1 {
+            left: -104px;
+        }
+
+        /* --- DYNAMIC WORKSPACE ROUTING PANEL STATES --- */
+        #workspace {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+            background: linear-gradient(135deg, #0f172a, #070a12);
+            transition: padding-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 40px;
+        }
+
+        /* Workspace adaptive alignment coordinates matching active side panel visibility states */
+        body:not(.sb1-closed):not(.sb2-closed).editor-active #workspace { padding-left: 280px; }
+        body:not(.sb1-closed).sb2-closed.editor-active #workspace { padding-left: 180px; }
+        body.sb1-closed:not(.sb2-closed).editor-active #workspace { padding-left: 180px; }
+        body.sb1-closed.sb2-closed.editor-active #workspace { padding-left: 80px; }
+        body:not(.editor-active):not(.sb1-closed) #workspace { padding-left: 120px; }
+        body:not(.editor-active).sb1-closed #workspace { padding-left: 20px; }
+
+
+        /* --- SCREEN VIEWS CONFIGURATIONS --- */
+        .view-content {
+            display: none;
+            width: 100%;
+            max-width: 600px;
+            text-align: center;
+        }
+
+        .view-content h1 {
+            font-size: 2.2rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            margin-bottom: 12px;
+            background: linear-gradient(to right, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .view-content p {
+            font-size: 0.95rem;
+            color: #64748b;
+            line-height: 1.6;
+        }
+
+        /* --- INTEGRATED RUNNER COMPONENT (BUILT DIRECTLY INTO VIEWER SCREEN) --- */
+        #viewer-hub {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(59, 130, 246, 0.25);
+            border-radius: 16px;
+            padding: 24px;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(8px);
+            margin: 20px auto 0 auto;
+            text-align: left;
+        }
+
+        #editor {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 8px;
+            width: 100%;
+        }
+
+        #saves {
+            grid-column: span 5;
+            width: 100%;
+            height: 140px;
+            overflow-y: auto;
+            background: #020617;
+            border: 1px solid #1e293b;
+            border-radius: 8px;
+            padding: 6px;
+            margin-bottom: 6px;
+        }
+
+        .save-item {
+            padding: 8px 12px;
+            margin-bottom: 4px;
+            background: #0f172a;
+            border: 1px solid #1e293b;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            transition: all 0.15s ease;
+        }
+
+        .save-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .save-item:hover {
+            background: #1e293b;
+            border-color: #3b82f6;
+        }
+
+        .save-item.selected {
+            background: rgba(59, 130, 246, 0.15);
+            border-color: #3b82f6;
+            color: #60a5fa;
+        }
+
+        #editor button {
+            grid-column: span 1;
+            width: 100%;
+            padding: 10px 0;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            text-align: center;
+            color: white;
+        }
+
+        #remove { background: #ef4444; }
+        #remove:hover { background: #dc2626; }
+
+        #add { background: #2563eb; }
+        #add:hover { background: #1d4ed8; }
+
+        #replace { background: #f59e0b; }
+        #replace:hover { background: #d97706; }
+
+        #open { background: #10b981; }
+        #open:hover { background: #059669; }
+
+        #close { background: #64748b; }
+        #close:hover { background: #475569; }
+
+        /* Notification overlay setups */
+        #statusOverlay {
+            position: fixed;
+            bottom: 16px;
+            right: 16px;
+            padding: 10px 16px;
+            background: #1e293b;
+            border-left: 4px solid #3b82f6;
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            z-index: 2000;
+            font-size: 0.85rem;
+            display: none;
+            pointer-events: none;
+        }
+
+        #saves::-webkit-scrollbar {
+            width: 4px;
+        }
+        #saves::-webkit-scrollbar-track {
+            background: #020617;
+        }
+        #saves::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 2px;
+        }
+    </style>
+</head>
+<body class="sb1-closed"> 
+
+    <div class="sidebar-controls">
+        <button id="sidebarToggle" class="ctrl-btn" title="Toggle Main Sidebar">&gt;</button>
+    </div>
+
+    <div id="sidebar1">
+        <div class="sidebar1-content">
+            <button id="navExplorer" class="sidebar-btn">Explorer</button>
+            <button id="navEditor" class="sidebar-btn">Editor</button>
+            <button id="navViewer" class="sidebar-btn active-btn">Viewer</button>
+        </div>
+    </div>
+
+    <div id="sidebar2">
+        <button id="inlinePlusMinus" title="Toggle Editor Workspace">&lt;</button>
+        <div class="sidebar2-placeholder">Editor Workspace</div>
+    </div>
+
+    <!-- Main dynamic workspace layout container -->
+    <div id="workspace">
+        <div id="view-explorer" class="view-content">
+            <h1>File Explorer</h1>
+            <p>Ecosystem system assets files overview monitor dashboard.</p>
+        </div>
+
+        <div id="view-editor" class="view-content">
+            <h1>Code Workspace</h1>
+            <p>Inline runtime text transformation modification fields modules.</p>
+        </div>
+
+        <div id="view-viewer" class="view-content" style="display: block;">
+            <h1>Dynamic File Runtime</h1>
+            <p>Select, manage, and install application bundles directly inside the execution sandbox.</p>
+            
+            <div id="viewer-hub">
+                <div id="editor">
+                    <div id="saves"></div>
+                    <button id="remove">-</button>
+                    <button id="add">+</button>
+                    <button id="replace">[R]</button>
+                    <button id="open">[O]</button>
+                    <button id="close">[C]</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <iframe id="runner"></iframe>
+
+    <input type="file" id="appFileInput" accept=".html,.zip" style="display: none;">
+    <div id="statusOverlay"></div>
+
+    <script>
+        // System state tracking arrays
+        let storage = [];
+        let selectedIndex = -1;
+
+        // Document target references
+        const sidebarToggle = document.getElementById('sidebarToggle');
+        const inlinePlusMinus = document.getElementById('inlinePlusMinus');
+        const sidebarButtons = document.querySelectorAll('.sidebar-btn');
+        
+        const savesContainer = document.getElementById('saves');
+        const appFileInput = document.getElementById('appFileInput');
+        const runnerFrame = document.getElementById('runner');
+        const workspace = document.getElementById('workspace');
+        const statusOverlay = document.getElementById('statusOverlay');
+
+        let currentMode = 'add';
+
+        // Sidebar 1 Toggle Mechanics
+        sidebarToggle.addEventListener('click', () => {
+            const isClosed = document.body.classList.contains('sb1-closed');
+            if (isClosed) {
+                document.body.classList.remove('sb1-closed');
+                sidebarToggle.innerHTML = '&lt;';
+            } else {
+                document.body.classList.add('sb1-closed');
+                sidebarToggle.innerHTML = '&gt;';
+            }
+        });
+
+        // Sidebar 2 Toggle Mechanics
+        inlinePlusMinus.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const isClosed = document.body.classList.contains('sb2-closed');
+            if (isClosed) {
+                document.body.classList.remove('sb2-closed');
+                inlinePlusMinus.innerHTML = '&lt;';
+            } else {
+                document.body.classList.add('sb2-closed');
+                inlinePlusMinus.innerHTML = '&gt;';
+            }
+        });
+
+        // Clean UI View Switching Tab Pipelines
+        sidebarButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                sidebarButtons.forEach(b => b.classList.remove('active-btn'));
+                btn.classList.add('active-btn');
+                
+                // Hide all screen contents
+                document.querySelectorAll('.view-content').forEach(view => view.style.display = 'none');
+                
+                // Route view outputs depending on matching selection elements
+                if (btn.id === 'navExplorer') {
+                    document.body.classList.remove('editor-active');
+                    document.getElementById('view-explorer').style.display = 'block';
+                } else if (btn.id === 'navEditor') {
+                    document.body.classList.add('editor-active');
+                    document.body.classList.remove('sb2-closed');
+                    inlinePlusMinus.innerHTML = '&lt;';
+                    document.getElementById('view-editor').style.display = 'block';
+                } else if (btn.id === 'navViewer') {
+                    document.body.classList.remove('editor-active');
+                    document.getElementById('view-viewer').style.display = 'block';
+                    renderSaves();
+                }
+            });
+        });
+
+        // Status Feedback Overlay Controller
+        function showStatus(text, color = '#3b82f6') {
+            statusOverlay.innerText = text;
+            statusOverlay.style.borderLeftColor = color;
+            statusOverlay.style.display = 'block';
+            setTimeout(() => { statusOverlay.style.display = 'none'; }, 2500);
+        }
+
+        // Render uploaded file list items into the integrated #saves widget container block
+        function renderSaves() {
+            savesContainer.innerHTML = '';
+            if (storage.length === 0) {
+                savesContainer.innerHTML = '<div style="color: #475569; font-size: 0.75rem; text-align: center; padding: 36px 0; font-weight: 600;">EMPTY FILE STACK</div>';
+                return;
+            }
+
+            storage.forEach((item, index) => {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = `save-item ${selectedIndex === index ? 'selected' : ''}`;
+                itemDiv.innerText = item.name;
+                
+                itemDiv.addEventListener('click', (e) => {
+                    e.stopPropagation(); 
+                    selectedIndex = index;
+                    renderSaves();
+                });
+                savesContainer.appendChild(itemDiv);
+            });
+        }
+
+        // Staged File Ingestion Actions
+        document.getElementById('add').addEventListener('click', () => {
+            currentMode = 'add';
+            appFileInput.click();
+        });
+
+        document.getElementById('replace').addEventListener('click', () => {
+            if (selectedIndex === -1) {
+                showStatus('Select a file slot entry to replace.', '#f59e0b');
+                return;
+            }
+            currentMode = 'replace';
+            appFileInput.click();
+        });
+
+        document.getElementById('remove').addEventListener('click', () => {
+            if (selectedIndex === -1) {
+                showStatus('Select a file slot entry to remove.', '#ef4444');
+                return;
+            }
+            storage.splice(selectedIndex, 1);
+            selectedIndex = -1;
+            renderSaves();
+            showStatus('Asset purged successfully.');
+        });
+
+        document.getElementById('open').addEventListener('click', () => {
+            if (selectedIndex === -1) {
+                showStatus('Highlight a project slot to execute.', '#f59e0b');
+                return;
+            }
+            launchApp(storage[selectedIndex]);
+        });
+
+        document.getElementById('close').addEventListener('click', () => {
+            runnerFrame.srcdoc = "";
+            workspace.style.display = 'flex';
+            document.body.classList.remove('runtime-active');
+            showStatus('Runtime sandbox cleared.');
+        });
+
+        // HTML & Zip File Import Compilation Handlers
+        appFileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+
+            if (file.name.endsWith('.html')) {
+                reader.onload = function(evt) { processUploadedData(file.name, evt.target.result); };
+                reader.readAsText(file);
+            } else if (file.name.endsWith('.zip')) {
+                reader.onload = function(evt) {
+                    JSZip.loadAsync(evt.target.result).then(async function(zip) {
+                        let indexFile = zip.file("index.html");
+                        if (!indexFile) {
+                            const htmlFiles = Object.keys(zip.files).filter(path => path.endsWith('.html'));
+                            if (htmlFiles.length > 0) indexFile = zip.file(htmlFiles[0]);
+                        }
+
+                        if (!indexFile) {
+                            showStatus('Error: index.html entry point context not found inside ZIP.', '#ef4444');
+                            return;
+                        }
+
+                        let htmlContent = await indexFile.async("string");
+                        for (let relativePath in zip.files) {
+                            if (!zip.files[relativePath].dir && relativePath !== indexFile.name) {
+                                const assetFile = zip.file(relativePath);
+                                const fileBlob = await assetFile.async("blob");
+                                const blobUrl = URL.createObjectURL(fileBlob);
+                                htmlContent = htmlContent.split(relativePath).join(blobUrl);
+                            }
+                        }
+                        processUploadedData(file.name, htmlContent);
+                    }).catch(() => { showStatus('Compressed zip payload processing failed.', '#ef4444'); });
+                };
+                reader.readAsArrayBuffer(file);
+            }
+            appFileInput.value = '';
+        });
+
+        function processUploadedData(name, content) {
+            const payload = { name, content };
+            if (currentMode === 'add') {
+                storage.push(payload);
+                selectedIndex = storage.length - 1;
+                showStatus('File staged onto the local index.');
+            } else {
+                storage[selectedIndex] = payload;
+                showStatus('Slot entries overwritten.');
+            }
+            renderSaves();
+        }
+
+        function launchApp(app) {
+            workspace.style.display = 'none';
+            document.body.classList.add('runtime-active');
+            runnerFrame.srcdoc = "";
+            setTimeout(() => { runnerFrame.srcdoc = app.content; }, 50);
+        }
+        
+        // Render empty slot indicator on frame boot
+        renderSaves();
+    </script>
+</body>
+</html>
