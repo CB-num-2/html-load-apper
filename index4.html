@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dynamic File App Runner</title>
-    <!-- Allowed CDN for ZIP file processing -->
+    <title>Dynamic Sandbox Environment</title>
+    <!-- Allowed CDN for ZIP handling -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
         * {
@@ -22,7 +22,7 @@
             color: #e2e8f0;
         }
 
-        /* Fullscreen app runner environment */
+        /* Fullscreen Execution Viewport */
         #runner {
             position: absolute;
             top: 0;
@@ -34,7 +34,7 @@
             background: transparent;
         }
 
-        /* --- FIXED OVERTOP MASTER SIDEBAR CONTROLS --- */
+        /* Fixed Navigation Access Point Toggle */
         .sidebar-controls {
             position: fixed;
             top: 12px;
@@ -65,9 +65,9 @@
             background: linear-gradient(135deg, #2563eb, #3b82f6);
         }
 
-        /* --- DUAL SIDEBAR LAYOUTS --- */
+        /* --- DUAL SIDEBAR DESIGNS --- */
 
-        /* Sidebar 1: The Main Navigation Bar containing pill buttons */
+        /* Primary Modular Navigation Dock */
         #sidebar1 {
             position: fixed;
             top: 0;
@@ -87,7 +87,7 @@
             box-shadow: 4px 0 24px rgba(0, 0, 0, 0.4);
         }
 
-        /* Sidebar 2: The Extra Workspace Editor Panel */
+        /* Secondary Contextual Extension Sidebar */
         #sidebar2 {
             position: fixed;
             top: 0;
@@ -106,34 +106,31 @@
             overflow: hidden;
         }
 
-        /* Position anchors depending on Sidebar 1 status */
         body:not(.sb1-closed) #sidebar2 { left: 104px; }
         body.sb1-closed #sidebar2 { left: 0px; }
 
-        /* Width sizing depending on internal collapse status */
-        body:not(.sb2-closed) #sidebar2 { width: 160px; }
+        body:not(.sb2-closed) #sidebar2 { width: 180px; }
         body.sb2-closed #sidebar2 { width: 56px; }
 
-        /* Enforce layout view toggle mapping architectures */
         body:not(.editor-active) #sidebar2 {
             display: none !important;
         }
 
-        .sidebar2-placeholder {
+        .sidebar2-header {
             font-size: 0.75rem;
-            color: #475569;
+            color: #64748b;
             text-transform: uppercase;
             letter-spacing: 0.05em;
-            margin-top: 20px;
+            margin: 15px 0 10px 0;
+            font-weight: 700;
             transition: opacity 0.2s;
         }
 
-        body.sb2-closed .sidebar2-placeholder {
+        body.sb2-closed .sidebar2-header {
             opacity: 0;
             pointer-events: none;
         }
 
-        /* Toggle arrow built to sit at the top left of the Editor Bar */
         #inlinePlusMinus {
             position: absolute;
             top: 12px;
@@ -159,7 +156,7 @@
             background: linear-gradient(135deg, #2563eb, #3b82f6);
         }
 
-        /* Pill-Shaped Buttons Layout inside Sidebar 1 */
+        /* Pill Buttons Configuration */
         .sidebar1-content {
             display: flex;
             flex-direction: column;
@@ -184,8 +181,6 @@
             align-items: center;
             justify-content: center;
             transition: all 0.2s ease;
-            overflow: hidden;
-            white-space: nowrap;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
 
@@ -193,11 +188,8 @@
             background: rgba(59, 130, 246, 0.08);
             border-color: rgba(59, 130, 246, 0.4);
             color: #60a5fa;
-            transform: translateY(-1px);
-            box-shadow: 0 0 12px rgba(59, 130, 246, 0.2);
         }
 
-        /* --- ACTIVE VIBRANT BLUE STATUS HIGHLIGHT --- */
         .sidebar-btn.active-btn {
             background: #2563eb !important;
             color: #ffffff !important;
@@ -205,18 +197,16 @@
             box-shadow: 0 0 14px rgba(37, 99, 235, 0.5);
         }
 
-        /* Global Hide State when Running applications */
+        /* Global Execution concealment switches */
         body.runtime-active #sidebar1, 
         body.runtime-active #sidebar2, 
         body.runtime-active .sidebar-controls {
             display: none !important;
         }
 
-        body.sb1-closed #sidebar1 {
-            left: -104px;
-        }
+        body.sb1-closed #sidebar1 { left: -104px; }
 
-        /* --- DYNAMIC WORKSPACE ROUTING PANEL STATES --- */
+        /* Dynamic core panel responsive layout paddings */
         #workspace {
             position: absolute;
             top: 0;
@@ -228,59 +218,151 @@
             transition: padding-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             display: flex;
             flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            padding: 40px;
+            padding: 30px;
         }
 
-        /* Workspace adaptive alignment coordinates matching active side panel visibility states */
-        body:not(.sb1-closed):not(.sb2-closed).editor-active #workspace { padding-left: 280px; }
-        body:not(.sb1-closed).sb2-closed.editor-active #workspace { padding-left: 180px; }
-        body.sb1-closed:not(.sb2-closed).editor-active #workspace { padding-left: 180px; }
-        body.sb1-closed.sb2-closed.editor-active #workspace { padding-left: 80px; }
-        body:not(.editor-active):not(.sb1-closed) #workspace { padding-left: 120px; }
-        body:not(.editor-active).sb1-closed #workspace { padding-left: 20px; }
+        body:not(.sb1-closed):not(.sb2-closed).editor-active #workspace { padding-left: 310px; }
+        body:not(.sb1-closed).sb2-closed.editor-active #workspace { padding-left: 190px; }
+        body.sb1-closed:not(.sb2-closed).editor-active #workspace { padding-left: 210px; }
+        body.sb1-closed.sb2-closed.editor-active #workspace { padding-left: 90px; }
+        body:not(.editor-active):not(.sb1-closed) #workspace { padding-left: 140px; }
+        body:not(.editor-active).sb1-closed #workspace { padding-left: 30px; }
 
-
-        /* --- SCREEN VIEWS CONFIGURATIONS --- */
         .view-content {
             display: none;
             width: 100%;
-            max-width: 600px;
-            text-align: center;
+            height: 100%;
         }
 
-        .view-content h1 {
-            font-size: 2.2rem;
+        h1 {
+            font-size: 1.8rem;
             font-weight: 700;
-            letter-spacing: -0.02em;
-            margin-bottom: 12px;
+            margin-bottom: 6px;
             background: linear-gradient(to right, #60a5fa, #a78bfa);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
 
-        .view-content p {
-            font-size: 0.95rem;
+        .subtitle {
+            font-size: 0.9rem;
             color: #64748b;
-            line-height: 1.6;
+            margin-bottom: 20px;
         }
 
-        /* --- INTEGRATED RUNNER COMPONENT (BUILT DIRECTLY INTO VIEWER SCREEN) --- */
+        /* --- VIRTUAL WORKSPACE FILE TREE (SIDEBAR 2) --- */
+        #vFileTree {
+            width: 100%;
+            padding: 0 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        body.sb2-closed #vFileTree {
+            display: none;
+        }
+
+        .tree-file-item {
+            padding: 8px 12px;
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid rgba(255,255,255,0.03);
+            border-radius: 6px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color: #94a3b8;
+            transition: all 0.2s ease;
+        }
+
+        .tree-file-item:hover, .tree-file-item.active-file {
+            background: rgba(37, 99, 235, 0.15);
+            border-color: #3b82f6;
+            color: #60a5fa;
+        }
+
+        /* --- CODE EDITOR INTERFACE LAYOUT --- */
+        .editor-container {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            height: calc(100% - 60px);
+            background: #020617;
+            border: 1px solid #1e293b;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+        }
+
+        .editor-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 16px;
+            background: #0f172a;
+            border-bottom: 1px solid #1e293b;
+        }
+
+        .active-file-badge {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #60a5fa;
+            background: rgba(59, 130, 246, 0.1);
+            padding: 4px 10px;
+            border-radius: 4px;
+            border: 1px solid rgba(59, 130, 246, 0.2);
+        }
+
+        .editor-actions {
+            display: flex;
+            gap: 6px;
+        }
+
+        .editor-btn {
+            padding: 5px 12px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            color: white;
+            transition: opacity 0.2s;
+        }
+
+        .editor-btn:hover { opacity: 0.85; }
+        .btn-create { background: #2563eb; }
+        .btn-rename { background: #f59e0b; }
+        .btn-close { background: #64748b; }
+
+        #editorTextarea {
+            width: 100%;
+            height: 100%;
+            background: #020617;
+            border: none;
+            color: #cbd5e1;
+            padding: 16px;
+            font-family: 'Consolas', 'Courier New', Courier, monospace;
+            font-size: 0.92rem;
+            line-height: 1.5;
+            resize: none;
+            outline: none;
+        }
+
+        /* --- INTEGRATED VIEWER HUB SCREEN LAYOUT --- */
         #viewer-hub {
             background: rgba(15, 23, 42, 0.6);
             border: 1px solid rgba(59, 130, 246, 0.25);
             border-radius: 16px;
             padding: 24px;
             width: 100%;
-            max-width: 400px;
+            max-width: 440px;
             box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.4);
             backdrop-filter: blur(8px);
-            margin: 20px auto 0 auto;
-            text-align: left;
+            margin-top: 10px;
         }
 
-        #editor {
+        #editor-stack-panel {
             display: grid;
             grid-template-columns: repeat(5, 1fr);
             gap: 8px;
@@ -290,13 +372,12 @@
         #saves {
             grid-column: span 5;
             width: 100%;
-            height: 140px;
+            height: 130px;
             overflow-y: auto;
             background: #020617;
             border: 1px solid #1e293b;
             border-radius: 8px;
             padding: 6px;
-            margin-bottom: 6px;
         }
 
         .save-item {
@@ -310,11 +391,9 @@
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            transition: all 0.15s ease;
-        }
-
-        .save-item:last-child {
-            margin-bottom: 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
         }
 
         .save-item:hover {
@@ -323,41 +402,201 @@
         }
 
         .save-item.selected {
-            background: rgba(59, 130, 246, 0.15);
+            background: rgba(37, 99, 235, 0.15);
             border-color: #3b82f6;
             color: #60a5fa;
         }
 
-        #editor button {
+        #editor-stack-panel button {
             grid-column: span 1;
-            width: 100%;
             padding: 10px 0;
             border: none;
             border-radius: 6px;
             font-weight: bold;
             font-size: 0.85rem;
             cursor: pointer;
-            transition: all 0.15s ease;
-            text-align: center;
+            color: white;
+            transition: filter 0.15s ease;
+        }
+
+        #editor-stack-panel button:hover { filter: brightness(1.15); }
+        #remove { background: #ef4444; }
+        #add { background: #2563eb; }
+        #replace { background: #f59e0b; }
+        #open { background: #10b981; }
+        #close { background: #64748b; }
+
+        .manage-saves-trigger-row {
+            grid-column: span 5;
+            margin-top: 4px;
+        }
+
+        .btn-trigger-manage {
+            width: 100%;
+            padding: 10px;
+            background: linear-gradient(135deg, #1e293b, #0f172a);
+            border: 1px solid #334155 !important;
+            border-radius: 6px;
+            color: #94a3b8 !important;
+            font-weight: 600 !important;
+            letter-spacing: 0.02em;
+        }
+
+        /* --- FULL SCREEN OVERLAY SAVE MANAGER MENU --- */
+        #saveManagerModal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(2, 6, 23, 0.85);
+            backdrop-filter: blur(20px);
+            z-index: 2500;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .manager-container {
+            width: 100%;
+            max-width: 700px;
+            height: 85vh;
+            background: #0f172a;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 16px;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.7);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .manager-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid #1e293b;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .manager-grid-workspace {
+            flex: 1;
+            padding: 20px 24px;
+            overflow-y: auto;
+        }
+
+        .batch-action-bar {
+            background: #0b0f17;
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+            border: 1px solid #1e293b;
+        }
+
+        .batch-btn {
+            padding: 6px 12px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
             color: white;
         }
 
-        #remove { background: #ef4444; }
-        #remove:hover { background: #dc2626; }
+        .btn-batch-create { background: #8b5cf6; }
+        .btn-batch-upload { background: #10b981; }
+        .btn-batch-down { background: #3b82f6; }
+        .btn-batch-del { background: #ef4444; }
 
-        #add { background: #2563eb; }
-        #add:hover { background: #1d4ed8; }
+        .save-grid-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
 
-        #replace { background: #f59e0b; }
-        #replace:hover { background: #d97706; }
+        .grid-row-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            background: #1e293b;
+            border-radius: 8px;
+            border: 1px solid transparent;
+            transition: all 0.15s ease;
+        }
 
-        #open { background: #10b981; }
-        #open:hover { background: #059669; }
+        .grid-row-item.active-row {
+            border-color: #3b82f6;
+            background: rgba(59, 130, 246, 0.05);
+        }
 
-        #close { background: #64748b; }
-        #close:hover { background: #475569; }
+        .grid-checkbox {
+            width: 16px;
+            height: 16px;
+            margin-right: 16px;
+            cursor: pointer;
+        }
 
-        /* Notification overlay setups */
+        .grid-details {
+            flex: 1;
+            cursor: pointer;
+        }
+
+        .grid-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #f8fafc;
+        }
+
+        .grid-meta {
+            font-size: 0.75rem;
+            color: #64748b;
+            margin-top: 2px;
+        }
+
+        .grid-row-actions {
+            display: flex;
+            gap: 6px;
+        }
+
+        .row-action-btn {
+            padding: 4px 10px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            border: 1px solid #334155;
+            background: #0f172a;
+            color: #cbd5e1;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .row-action-btn:hover {
+            border-color: #3b82f6;
+            color: #60a5fa;
+        }
+
+        .manager-footer {
+            padding: 16px 24px;
+            border-top: 1px solid #1e293b;
+            background: #0b0f17;
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .btn-close-modal {
+            padding: 8px 20px;
+            background: #334155;
+            color: white;
+            font-weight: 600;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        /* Status notification engine overlay */
         #statusOverlay {
             position: fixed;
             bottom: 16px;
@@ -367,30 +606,21 @@
             border-left: 4px solid #3b82f6;
             border-radius: 6px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-            z-index: 2000;
+            z-index: 3000;
             font-size: 0.85rem;
             display: none;
             pointer-events: none;
         }
-
-        #saves::-webkit-scrollbar {
-            width: 4px;
-        }
-        #saves::-webkit-scrollbar-track {
-            background: #020617;
-        }
-        #saves::-webkit-scrollbar-thumb {
-            background: #334155;
-            border-radius: 2px;
-        }
     </style>
 </head>
-<body class="sb1-closed"> 
+<body class="sb1-closed">
 
+    <!-- Top Floating Master Toggle Panels Anchor -->
     <div class="sidebar-controls">
-        <button id="sidebarToggle" class="ctrl-btn" title="Toggle Main Sidebar">&gt;</button>
+        <button id="sidebarToggle" class="ctrl-btn">&gt;</button>
     </div>
 
+    <!-- Sidebar 1: Primary Section Routers -->
     <div id="sidebar1">
         <div class="sidebar1-content">
             <button id="navExplorer" class="sidebar-btn">Explorer</button>
@@ -399,64 +629,132 @@
         </div>
     </div>
 
+    <!-- Sidebar 2: Editor Context Workspace Container Extension -->
     <div id="sidebar2">
-        <button id="inlinePlusMinus" title="Toggle Editor Workspace">&lt;</button>
-        <div class="sidebar2-placeholder">Editor Workspace</div>
+        <button id="inlinePlusMinus">&lt;</button>
+        <div class="sidebar2-header">Open Files</div>
+        <div id="vFileTree"></div>
     </div>
 
-    <!-- Main dynamic workspace layout container -->
+    <!-- Central core screen modules layout -->
     <div id="workspace">
+        
+        <!-- Explorer View Module -->
         <div id="view-explorer" class="view-content">
             <h1>File Explorer</h1>
-            <p>Ecosystem system assets files overview monitor dashboard.</p>
+            <div class="subtitle">System data bundles and tracking indices metadata grids.</div>
         </div>
 
+        <!-- Editor View Module (Text Area Workspace Layout + Action Controllers) -->
         <div id="view-editor" class="view-content">
-            <h1>Code Workspace</h1>
-            <p>Inline runtime text transformation modification fields modules.</p>
+            <h1>Workspace Editor</h1>
+            <div class="subtitle">Modify, append, or configure sandboxed workspace components inside the text field matrix.</div>
+            
+            <div class="editor-container">
+                <div class="editor-toolbar">
+                    <div id="activeFileIndicator" class="active-file-badge">No File Open</div>
+                    <div class="editor-actions">
+                        <button class="editor-btn btn-create" id="editCreateFile" title="Create a new virtual file">[+] New</button>
+                        <button class="editor-btn btn-rename" id="editRenameFile" title="Rename currently selected file">[R] Rename</button>
+                        <button class="editor-btn btn-close" id="editCloseFile" title="Close current file safely without dropping storage index">[X] Close</button>
+                    </div>
+                </div>
+                <textarea id="editorTextarea" placeholder="// Select a file from the extension tab tree frame or generate a fresh template node component via the [+] action button..." disabled></textarea>
+            </div>
         </div>
 
+        <!-- Viewer Module (Execution Sandboxes Dashboard Hub Container) -->
         <div id="view-viewer" class="view-content" style="display: block;">
-            <h1>Dynamic File Runtime</h1>
-            <p>Select, manage, and install application bundles directly inside the execution sandbox.</p>
+            <h1>Dynamic Sandbox Runtime</h1>
+            <div class="subtitle">Select, execute, and verify loaded bundles directly within local sandbox nodes.</div>
             
             <div id="viewer-hub">
-                <div id="editor">
+                <div id="editor-stack-panel">
                     <div id="saves"></div>
                     <button id="remove">-</button>
                     <button id="add">+</button>
                     <button id="replace">[R]</button>
                     <button id="open">[O]</button>
                     <button id="close">[C]</button>
+                    
+                    <div class="manage-saves-trigger-row">
+                        <button id="openSaveManager" class="btn-trigger-manage">MANAGE SAVES HUB</button>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- Screen Sandbox Application Executer Frame -->
     <iframe id="runner"></iframe>
 
+    <!-- Overlay Save Manager Menu Component Shell -->
+    <div id="saveManagerModal">
+        <div class="manager-container">
+            <div class="manager-header">
+                <h1 style="font-size: 1.4rem;">Saves Storage Manager</h1>
+            </div>
+            
+            <div class="manager-grid-workspace">
+                <div class="batch-action-bar">
+                    <button class="batch-btn btn-batch-create" id="mrgCreateScratch">Create Save (Scratch)</button>
+                    <button class="batch-btn btn-batch-upload" id="mrgUpload">Upload Save</button>
+                    <button class="batch-btn btn-batch-down" id="mrgDownloadBatch">Download Selected</button>
+                    <button class="batch-btn btn-batch-del" id="mrgDeleteBatch">Delete Selected</button>
+                </div>
+                
+                <div class="save-grid-list" id="saveGridListContainer"></div>
+            </div>
+            
+            <div class="manager-footer">
+                <button class="btn-close-modal" id="closeSaveManager">Exit Workspace</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Structural controllers kept separate from UI container matrices -->
     <input type="file" id="appFileInput" accept=".html,.zip" style="display: none;">
+    <input type="file" id="managerFileInput" accept=".html,.zip" style="display: none;">
     <div id="statusOverlay"></div>
 
     <script>
-        // System state tracking arrays
-        let storage = [];
-        let selectedIndex = -1;
-
-        // Document target references
+        // Local system state arrays tracking configurations
+        let storage = [
+            {
+                name: "Demo_Project.html",
+                files: [
+                    { name: "index.html", content: "linear-gradient background simulation console demo.\n<h1>Hello Sandbox!</h1>" }
+                ]
+            }
+        ];
+        
+        let selectedIndex = 0; 
+        let activeFileIndex = -1; 
+        
+        // Target Document Elements Hook Map
         const sidebarToggle = document.getElementById('sidebarToggle');
         const inlinePlusMinus = document.getElementById('inlinePlusMinus');
         const sidebarButtons = document.querySelectorAll('.sidebar-btn');
         
         const savesContainer = document.getElementById('saves');
         const appFileInput = document.getElementById('appFileInput');
+        const managerFileInput = document.getElementById('managerFileInput');
         const runnerFrame = document.getElementById('runner');
         const workspace = document.getElementById('workspace');
         const statusOverlay = document.getElementById('statusOverlay');
+        
+        // Editor Layout Components
+        const vFileTree = document.getElementById('vFileTree');
+        const editorTextarea = document.getElementById('editorTextarea');
+        const activeFileIndicator = document.getElementById('activeFileIndicator');
+        
+        // Save Manager Components
+        const saveManagerModal = document.getElementById('saveManagerModal');
+        const saveGridListContainer = document.getElementById('saveGridListContainer');
 
-        let currentMode = 'add';
+        let currentUploadMode = 'add'; 
 
-        // Sidebar 1 Toggle Mechanics
+        // --- PRIMARY SIDEBAR TOGGLE MECHANICS ---
         sidebarToggle.addEventListener('click', () => {
             const isClosed = document.body.classList.contains('sb1-closed');
             if (isClosed) {
@@ -468,7 +766,6 @@
             }
         });
 
-        // Sidebar 2 Toggle Mechanics
         inlinePlusMinus.addEventListener('click', (e) => {
             e.stopPropagation();
             const isClosed = document.body.classList.contains('sb2-closed');
@@ -481,16 +778,14 @@
             }
         });
 
-        // Clean UI View Switching Tab Pipelines
+        // Dynamic Tab Section Routers 
         sidebarButtons.forEach(btn => {
             btn.addEventListener('click', () => {
                 sidebarButtons.forEach(b => b.classList.remove('active-btn'));
                 btn.classList.add('active-btn');
                 
-                // Hide all screen contents
                 document.querySelectorAll('.view-content').forEach(view => view.style.display = 'none');
                 
-                // Route view outputs depending on matching selection elements
                 if (btn.id === 'navExplorer') {
                     document.body.classList.remove('editor-active');
                     document.getElementById('view-explorer').style.display = 'block';
@@ -499,6 +794,7 @@
                     document.body.classList.remove('sb2-closed');
                     inlinePlusMinus.innerHTML = '&lt;';
                     document.getElementById('view-editor').style.display = 'block';
+                    syncEditorWorkspaceView();
                 } else if (btn.id === 'navViewer') {
                     document.body.classList.remove('editor-active');
                     document.getElementById('view-viewer').style.display = 'block';
@@ -507,65 +803,176 @@
             });
         });
 
-        // Status Feedback Overlay Controller
+        // Notification Overlay Messenger
         function showStatus(text, color = '#3b82f6') {
             statusOverlay.innerText = text;
             statusOverlay.style.borderLeftColor = color;
             statusOverlay.style.display = 'block';
-            setTimeout(() => { statusOverlay.style.display = 'none'; }, 2500);
+            setTimeout(() => { statusOverlay.style.display = 'none'; }, 2000);
         }
 
-        // Render uploaded file list items into the integrated #saves widget container block
+        // --- FILE EDITOR LOGIC ENGINE ---
+        function syncEditorWorkspaceView() {
+            vFileTree.innerHTML = '';
+            if (selectedIndex === -1 || storage.length === 0 || !storage[selectedIndex]) {
+                activeFileIndicator.innerText = "No Save Package Active";
+                editorTextarea.value = '';
+                editorTextarea.disabled = true;
+                vFileTree.innerHTML = '<div style="color:#475569; font-size:0.7rem; text-align:center; padding:10px 0;">Select/create a save bundle first</div>';
+                return;
+            }
+
+            const activeProject = storage[selectedIndex];
+            if (!activeProject.files) activeProject.files = [];
+
+            if (activeProject.files.length === 0) {
+                activeFileIndex = -1;
+                activeFileIndicator.innerText = "No Files In Bundle";
+                editorTextarea.value = '';
+                editorTextarea.disabled = true;
+            }
+
+            activeProject.files.forEach((file, fIdx) => {
+                const item = document.createElement('div');
+                item.className = `tree-file-item ${activeFileIndex === fIdx ? 'active-file' : ''}`;
+                item.innerText = file.name;
+                item.addEventListener('click', () => {
+                    // Cache workspace states before loading a different record target
+                    saveCurrentFileState();
+                    activeFileIndex = fIdx;
+                    loadActiveVirtualFileContent();
+                    syncEditorWorkspaceView();
+                });
+                vFileTree.appendChild(item);
+            });
+        }
+
+        function loadActiveVirtualFileContent() {
+            const activeProject = storage[selectedIndex];
+            if (activeProject && activeProject.files && activeProject.files[activeFileIndex]) {
+                const f = activeProject.files[activeFileIndex];
+                activeFileIndicator.innerText = f.name;
+                editorTextarea.value = f.content;
+                editorTextarea.disabled = false;
+            }
+        }
+
+        function saveCurrentFileState() {
+            const activeProject = storage[selectedIndex];
+            if (activeProject && activeProject.files && activeProject.files[activeFileIndex]) {
+                activeProject.files[activeFileIndex].content = editorTextarea.value;
+            }
+        }
+
+        // Track live modifications inside textarea matrix to target payload index references
+        editorTextarea.addEventListener('input', () => {
+            saveCurrentFileState();
+        });
+
+        // [+] Create virtual files cleanly from workspace
+        document.getElementById('editCreateFile').addEventListener('click', () => {
+            if (selectedIndex === -1 || !storage[selectedIndex]) {
+                showStatus('No active save slot loaded.', '#f59e0b');
+                return;
+            }
+            const name = prompt("Enter name for new file (e.g., component.css, script.js):");
+            if (!name) return;
+
+            // Enforce double registration collision validation controls
+            const exists = storage[selectedIndex].files.some(f => f.name.toLowerCase() === name.toLowerCase());
+            if (exists) {
+                showStatus('File signature already exists inside workspace.', '#ef4444');
+                return;
+            }
+
+            saveCurrentFileState();
+            storage[selectedIndex].files.push({ name: name, content: `/* Virtual component node: ${name} */\n` });
+            activeFileIndex = storage[selectedIndex].files.length - 1;
+            loadActiveVirtualFileContent();
+            syncEditorWorkspaceView();
+            showStatus('Virtual file allocated.');
+        });
+
+        // [R] Rename virtual files safely
+        document.getElementById('editRenameFile').addEventListener('click', () => {
+            if (selectedIndex === -1 || activeFileIndex === -1) {
+                showStatus('No dynamic workspace file target selected.', '#f59e0b');
+                return;
+            }
+            const oldName = storage[selectedIndex].files[activeFileIndex].name;
+            const newName = prompt(`Rename structural component "${oldName}" to:`, oldName);
+            if (!newName || newName === oldName) return;
+
+            storage[selectedIndex].files[activeFileIndex].name = newName;
+            activeFileIndicator.innerText = newName;
+            syncEditorWorkspaceView();
+            showStatus('Workspace manifest node shifted.');
+        });
+
+        // [X] Close file target fields safely without deleting storage maps
+        document.getElementById('editCloseFile').addEventListener('click', () => {
+            if (activeFileIndex === -1) return;
+            saveCurrentFileState();
+            activeFileIndex = -1;
+            activeFileIndicator.innerText = "No File Open";
+            editorTextarea.value = '';
+            editorTextarea.disabled = true;
+            syncEditorWorkspaceView();
+            showStatus('Workspace file closed.');
+        });
+
+        // --- VIEWER HUB SCREEN CONTROLLER METHODS ---
         function renderSaves() {
             savesContainer.innerHTML = '';
             if (storage.length === 0) {
-                savesContainer.innerHTML = '<div style="color: #475569; font-size: 0.75rem; text-align: center; padding: 36px 0; font-weight: 600;">EMPTY FILE STACK</div>';
+                savesContainer.innerHTML = '<div style="color: #475569; font-size: 0.75rem; text-align: center; padding: 34px 0; font-weight: 600;">EMPTY SAVES INDEX</div>';
                 return;
             }
 
             storage.forEach((item, index) => {
                 const itemDiv = document.createElement('div');
                 itemDiv.className = `save-item ${selectedIndex === index ? 'selected' : ''}`;
-                itemDiv.innerText = item.name;
+                itemDiv.innerHTML = `<span>${item.name}</span> <span style="font-size:0.7rem; color:#475569;">(${item.files ? item.files.length : 0} files)</span>`;
                 
                 itemDiv.addEventListener('click', (e) => {
                     e.stopPropagation(); 
                     selectedIndex = index;
+                    activeFileIndex = -1; 
                     renderSaves();
                 });
                 savesContainer.appendChild(itemDiv);
             });
         }
 
-        // Staged File Ingestion Actions
         document.getElementById('add').addEventListener('click', () => {
-            currentMode = 'add';
+            currentUploadMode = 'add';
             appFileInput.click();
         });
 
         document.getElementById('replace').addEventListener('click', () => {
             if (selectedIndex === -1) {
-                showStatus('Select a file slot entry to replace.', '#f59e0b');
+                showStatus('Select a target storage track to overwrite.', '#f59e0b');
                 return;
             }
-            currentMode = 'replace';
+            currentUploadMode = 'replace';
             appFileInput.click();
         });
 
         document.getElementById('remove').addEventListener('click', () => {
             if (selectedIndex === -1) {
-                showStatus('Select a file slot entry to remove.', '#ef4444');
+                showStatus('Highlight a database slot target.', '#ef4444');
                 return;
             }
             storage.splice(selectedIndex, 1);
-            selectedIndex = -1;
+            selectedIndex = storage.length > 0 ? 0 : -1;
+            activeFileIndex = -1;
             renderSaves();
-            showStatus('Asset purged successfully.');
+            showStatus('Track allocation dropping complete.');
         });
 
         document.getElementById('open').addEventListener('click', () => {
-            if (selectedIndex === -1) {
-                showStatus('Highlight a project slot to execute.', '#f59e0b');
+            if (selectedIndex === -1 || !storage[selectedIndex]) {
+                showStatus('Please specify an executable node path reference.', '#f59e0b');
                 return;
             }
             launchApp(storage[selectedIndex]);
@@ -575,71 +982,240 @@
             runnerFrame.srcdoc = "";
             workspace.style.display = 'flex';
             document.body.classList.remove('runtime-active');
-            showStatus('Runtime sandbox cleared.');
+            showStatus('Runtime engine instance wiped.');
         });
 
-        // HTML & Zip File Import Compilation Handlers
-        appFileInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
+        // --- EXTENDED DISPATCH CHANNELS FOR FILE LOADERS ---
+        appFileInput.addEventListener('change', (e) => { handleFileIngestionPipeline(e.target.files[0], true); });
+        managerFileInput.addEventListener('change', (e) => { handleFileIngestionPipeline(e.target.files[0], false); });
 
+        function handleFileIngestionPipeline(file, buildViewer) {
+            if (!file) return;
             const reader = new FileReader();
 
             if (file.name.endsWith('.html')) {
-                reader.onload = function(evt) { processUploadedData(file.name, evt.target.result); };
+                reader.onload = function(evt) {
+                    const virtualProject = {
+                        name: file.name,
+                        files: [{ name: "index.html", content: evt.target.result }]
+                    };
+                    commitProjectToSystemArrays(virtualProject, buildViewer);
+                };
                 reader.readAsText(file);
             } else if (file.name.endsWith('.zip')) {
                 reader.onload = function(evt) {
                     JSZip.loadAsync(evt.target.result).then(async function(zip) {
-                        let indexFile = zip.file("index.html");
-                        if (!indexFile) {
-                            const htmlFiles = Object.keys(zip.files).filter(path => path.endsWith('.html'));
-                            if (htmlFiles.length > 0) indexFile = zip.file(htmlFiles[0]);
-                        }
-
-                        if (!indexFile) {
-                            showStatus('Error: index.html entry point context not found inside ZIP.', '#ef4444');
-                            return;
-                        }
-
-                        let htmlContent = await indexFile.async("string");
-                        for (let relativePath in zip.files) {
-                            if (!zip.files[relativePath].dir && relativePath !== indexFile.name) {
-                                const assetFile = zip.file(relativePath);
-                                const fileBlob = await assetFile.async("blob");
-                                const blobUrl = URL.createObjectURL(fileBlob);
-                                htmlContent = htmlContent.split(relativePath).join(blobUrl);
+                        const virtualProject = { name: file.name, files: [] };
+                        
+                        for (let path in zip.files) {
+                            if (!zip.files[path].dir) {
+                                const fileData = zip.file(path);
+                                const content = await fileData.async("string");
+                                virtualProject.files.push({ name: path, content: content });
                             }
                         }
-                        processUploadedData(file.name, htmlContent);
-                    }).catch(() => { showStatus('Compressed zip payload processing failed.', '#ef4444'); });
+                        
+                        if (virtualProject.files.length === 0) {
+                            showStatus('Error: Zip matrix contained no structural layout data.', '#ef4444');
+                            return;
+                        }
+                        commitProjectToSystemArrays(virtualProject, buildViewer);
+                    }).catch(() => { showStatus('Zip structural translation error.', '#ef4444'); });
                 };
                 reader.readAsArrayBuffer(file);
             }
             appFileInput.value = '';
-        });
+            managerFileInput.value = '';
+        }
 
-        function processUploadedData(name, content) {
-            const payload = { name, content };
-            if (currentMode === 'add') {
-                storage.push(payload);
+        function commitProjectToSystemArrays(project, refreshViewer) {
+            if (currentUploadMode === 'add') {
+                storage.push(project);
                 selectedIndex = storage.length - 1;
-                showStatus('File staged onto the local index.');
+                showStatus('Package storage tracking live.');
             } else {
-                storage[selectedIndex] = payload;
-                showStatus('Slot entries overwritten.');
+                if (selectedIndex !== -1 && storage[selectedIndex]) {
+                    storage[selectedIndex] = project;
+                    showStatus('Target cluster segment overwritten.');
+                }
             }
-            renderSaves();
+            activeFileIndex = -1;
+            if (refreshViewer) renderSaves();
+            else syncSaveManagerGridData();
         }
 
         function launchApp(app) {
             workspace.style.display = 'none';
             document.body.classList.add('runtime-active');
+            
+            // Build deployment pipeline linking nested components or running basic indexes
+            let primaryIndexFile = app.files.find(f => f.name.toLowerCase() === 'index.html') || app.files[0];
+            if (!primaryIndexFile) {
+                showStatus('Runtime build pipeline layout initialization failure.', '#ef4444');
+                return;
+            }
+
+            let runtimeContent = primaryIndexFile.content;
+            
+            // Asset compilation resolution loop
+            app.files.forEach(file => {
+                if (file.name !== primaryIndexFile.name) {
+                    const blob = new Blob([file.content], { type: 'text/plain' });
+                    const url = URL.createObjectURL(blob);
+                    runtimeContent = runtimeContent.split(file.name).join(url);
+                }
+            });
+
             runnerFrame.srcdoc = "";
-            setTimeout(() => { runnerFrame.srcdoc = app.content; }, 50);
+            setTimeout(() => { runnerFrame.srcdoc = runtimeContent; }, 50);
         }
-        
-        // Render empty slot indicator on frame boot
+
+        // --- FULL REVOLUTION MANAGEMENT OVERLAY MODULE (MANAGE SAVES HUB) ---
+        const openSaveManagerBtn = document.getElementById('openSaveManager');
+        const closeSaveManagerBtn = document.getElementById('closeSaveManager');
+
+        openSaveManagerBtn.addEventListener('click', () => {
+            saveManagerModal.style.display = 'flex';
+            syncSaveManagerGridData();
+        });
+
+        closeSaveManagerBtn.addEventListener('click', () => {
+            saveManagerModal.style.display = 'none';
+            renderSaves(); 
+        });
+
+        function syncSaveManagerGridData() {
+            saveGridListContainer.innerHTML = '';
+            if (storage.length === 0) {
+                saveGridListContainer.innerHTML = '<div style="color:#475569; text-align:center; padding:40px 0; font-weight:600; font-size:0.85rem;">NO STORAGE ENTRIES REGISTERED</div>';
+                return;
+            }
+
+            storage.forEach((save, index) => {
+                const row = document.createElement('div');
+                row.className = `grid-row-item ${selectedIndex === index ? 'active-row' : ''}`;
+                row.setAttribute('data-index', index);
+                
+                row.innerHTML = `
+                    <input type="checkbox" class="grid-checkbox" data-index="${index}">
+                    <div class="grid-details">
+                        <div class="grid-title">${save.name}</div>
+                        <div class="grid-meta">Components allocation count: ${save.files ? save.files.length : 0} payload items</div>
+                    </div>
+                    <div class="grid-row-actions">
+                        <button class="row-action-btn btn-row-select" onclick="triggerRowLoad(${index})">Select</button>
+                        <button class="row-action-btn btn-row-rename" onclick="triggerRowRename(${index})">Rename</button>
+                        <button class="row-action-btn btn-row-del" onclick="triggerRowDelete(${index})">Delete</button>
+                    </div>
+                `;
+                
+                row.querySelector('.grid-details').addEventListener('click', () => {
+                    triggerRowLoad(index);
+                });
+                
+                saveGridListContainer.appendChild(row);
+            });
+        }
+
+        window.triggerRowLoad = function(idx) {
+            selectedIndex = idx;
+            activeFileIndex = -1;
+            syncSaveManagerGridData();
+            showStatus(`Loaded target save: "${storage[idx].name}"`);
+        };
+
+        window.triggerRowRename = function(idx) {
+            const oldName = storage[idx].name;
+            const newName = prompt(`Enter new manifest label signature identifier for target "${oldName}":`, oldName);
+            if (!newName || newName === oldName) return;
+            
+            storage[idx].name = newName;
+            syncSaveManagerGridData();
+            showStatus('Package database record key renamed.');
+        };
+
+        window.triggerRowDelete = function(idx) {
+            if (!confirm(`Confirm absolute dropping deletion sequence parameters for target "${storage[idx].name}"?`)) return;
+            storage.splice(idx, 1);
+            if (selectedIndex === idx) selectedIndex = storage.length > 0 ? 0 : -1;
+            else if (selectedIndex > idx) selectedIndex--;
+            activeFileIndex = -1;
+            syncSaveManagerGridData();
+            showStatus('Record space dropped safely.');
+        };
+
+        // --- SCRATCH PRODUCTION MECHANIC ---
+        document.getElementById('mrgCreateScratch').addEventListener('click', () => {
+            const name = prompt("Assign label signature to fresh scratch index stack configuration container:", "Untitled_Project.html");
+            if (!name) return;
+            
+            const scratchSave = {
+                name: name,
+                files: [
+                    { name: "index.html", content: "<!DOCTYPE html>\n<html>\n<head><title>Scratch Boot</title></head>\n<body style='background:#111; color:#fff;'>\n\t<h1>Custom Scratch Module Bundle Space</h1>\n</body>\n</html>" }
+                ]
+            };
+            
+            storage.push(scratchSave);
+            selectedIndex = storage.length - 1;
+            activeFileIndex = -1;
+            syncSaveManagerGridData();
+            showStatus('Fresh custom structural track created.');
+        });
+
+        // --- BATCH STORAGE MANIPULATION ROUTINES ---
+        document.getElementById('mrgUpload').addEventListener('click', () => {
+            currentUploadMode = 'add';
+            managerFileInput.click();
+        });
+
+        document.getElementById('mrgDeleteBatch').addEventListener('click', () => {
+            const checkedBoxes = document.querySelectorAll('.grid-checkbox:checked');
+            if (checkedBoxes.length === 0) {
+                showStatus('Specify target check parameters before processing drop loops.', '#f59e0b');
+                return;
+            }
+            
+            if (!confirm(`Authorize deletion allocation tasks for selected (${checkedBoxes.length}) targets?`)) return;
+            
+            const indices = Array.from(checkedBoxes).map(cb => parseInt(cb.getAttribute('data-index'))).sort((a,b)=>b-a);
+            
+            indices.forEach(idx => {
+                storage.splice(idx, 1);
+            });
+            
+            selectedIndex = storage.length > 0 ? 0 : -1;
+            activeFileIndex = -1;
+            syncSaveManagerGridData();
+            showStatus('Multi-select structural purge completed.');
+        });
+
+        document.getElementById('mrgDownloadBatch').addEventListener('click', async () => {
+            const checkedBoxes = document.querySelectorAll('.grid-checkbox:checked');
+            if (checkedBoxes.length === 0) {
+                showStatus('Highlight selection criteria targets for compilation tasks.', '#f59e0b');
+                return;
+            }
+
+            const outZip = new JSZip();
+            checkedBoxes.forEach(cb => {
+                const idx = parseInt(cb.getAttribute('data-index'));
+                const save = storage[idx];
+                
+                const folder = outZip.folder(save.name.replace('.html', '_bundle'));
+                save.files.forEach(f => {
+                    folder.file(f.name, f.content);
+                });
+            });
+
+            const content = await outZip.generateAsync({ type: "blob" });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(content);
+            link.download = `Batch_Sandbox_Saves_Export.zip`;
+            link.click();
+            showStatus('Batch storage stack compilation download initialized.');
+        });
+
         renderSaves();
     </script>
 </body>
